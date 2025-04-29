@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useState, useContext, useEffect } from "react"
-import { supabase } from "../lib/supabase.js"
+import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser } from "../lib/api.js"
 import toast from "react-hot-toast"
 
 const AuthContext = createContext()
@@ -12,31 +12,23 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    // Kiểm tra phiên đăng nhập hiện tại
-    const checkSession = async () => {
+    // Kiểm tra trạng thái đăng nhập khi tải trang
+    const checkAuthStatus = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        setUser(session?.user || null)
+        // Nếu có token trong localStorage, lấy thông tin user
+        if (localStorage.getItem("token")) {
+          const userData = await getCurrentUser()
+          setUser(userData)
+        }
       } catch (error) {
-        console.error("Error checking auth session:", error)
+        console.error("Error checking auth status:", error)
+        setUser(null)
       } finally {
         setLoading(false)
       }
     }
 
-    checkSession()
-
-    // Lắng nghe sự thay đổi trạng thái xác thực
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null)
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
+    checkAuthStatus()
   }, [])
 
   // Đăng nhập
@@ -45,12 +37,8 @@ export function AuthProvider({ children }) {
       setLoading(true)
       setError(null)
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (error) throw error
+      const data = await apiLogin(email, password)
+      setUser(data.user)
 
       return data
     } catch (err) {
@@ -68,15 +56,15 @@ export function AuthProvider({ children }) {
       setLoading(true)
       setError(null)
 
-      const { data, error } = await supabase.auth.signUp({
+      const userData = {
         email,
         password,
-        options: { data: metadata },
-      })
+        fullName: metadata.full_name || "",
+      }
 
-      if (error) throw error
+      const data = await apiRegister(userData)
 
-      toast.success("Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.")
+      toast.success("Đ��ng ký thành công! Vui lòng đăng nhập.")
       return data
     } catch (err) {
       setError(err.message || "Đăng ký thất bại")
@@ -91,8 +79,8 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       setLoading(true)
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
+      await apiLogout()
+      setUser(null)
       toast.success("Đăng xuất thành công")
     } catch (err) {
       console.error("Error logging out:", err)
