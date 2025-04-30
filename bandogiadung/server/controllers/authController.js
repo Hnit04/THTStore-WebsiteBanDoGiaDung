@@ -81,8 +81,9 @@ exports.getMe = async (req, res, next) => {
 // @route   POST /api/auth/logout
 // @access  Private
 exports.logout = async (req, res, next) => {
+  // Sửa cách thiết lập cookie khi đăng xuất
   res.cookie("token", "none", {
-    expires: new Date(Date.now() + 10 * 1000),
+    expires: new Date(Date.now() + 10 * 1000), // 10 giây
     httpOnly: true,
   })
 
@@ -98,7 +99,8 @@ const sendTokenResponse = (user, statusCode, res) => {
   const token = user.getSignedJwtToken()
 
   const options = {
-    expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000),
+    // Sửa cách thiết lập thời gian hết hạn
+    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 ngày
     httpOnly: true,
   }
 

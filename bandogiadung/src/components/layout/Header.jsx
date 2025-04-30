@@ -1,30 +1,46 @@
 "use client"
 
-import { useState } from "react"
+
 import { Link, useNavigate } from "react-router-dom"
 import { ShoppingCart, Search, Menu, X, User, Heart } from "lucide-react"
 import { useCart } from "../../contexts/CartContext.jsx"
 import { useAuth } from "../../contexts/AuthContext.jsx"
+import { useState, useEffect, useRef } from "react";
+
 
 function Header() {
-  const { getCartCount } = useCart()
-  const { user, isAuthenticated, logout } = useAuth()
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const navigate = useNavigate()
+  const { getCartCount } = useCart();
+  const { user, isAuthenticated, logout } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
+  const menuRef = useRef(null);
 
   const handleSearch = (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery)}`)
-      setSearchQuery("")
+      navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
+      setSearchQuery("");
     }
-  }
+  };
 
   const handleLogout = async () => {
-    await logout()
-    navigate("/")
-  }
+    await logout();
+    navigate("/");
+  };
+
+  // Đóng modal khi nhấp ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
@@ -78,27 +94,40 @@ function Header() {
             </Link>
 
             {isAuthenticated ? (
-              <div className="relative group">
-                <button className="p-2 rounded-full hover:bg-gray-100">
+              <div className="relative" ref={menuRef}>
+                <button
+                  className="p-2 rounded-full hover:bg-gray-100"
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                >
                   <User className="w-5 h-5" />
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
-                  <div className="px-4 py-2 text-sm text-gray-700 border-b">
-                    Xin chào, {user?.user_metadata?.full_name || "Khách hàng"}
+                {isMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                    <div className="px-4 py-2 text-sm text-gray-700 border-b">
+                      Xin chào, {user?.user_metadata?.full_name || "Khách hàng"}
+                    </div>
+                    <Link
+                      to="/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Thông tin cá nhân
+                    </Link>
+                    <Link
+                      to="/orders"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Đơn hàng của tôi
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Đăng xuất
+                    </button>
                   </div>
-                  <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Thông tin cá nhân
-                  </Link>
-                  <Link to="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Đơn hàng của tôi
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Đăng xuất
-                  </button>
-                </div>
+                )}
               </div>
             ) : (
               <Link to="/login" className="p-2 rounded-full hover:bg-gray-100">
@@ -191,8 +220,8 @@ function Header() {
                   <button
                     className="text-left text-gray-700 hover:text-red-600 font-medium py-2"
                     onClick={() => {
-                      handleLogout()
-                      setIsMenuOpen(false)
+                      handleLogout();
+                      setIsMenuOpen(false);
                     }}
                   >
                     Đăng xuất
@@ -215,4 +244,4 @@ function Header() {
   )
 }
 
-export default Header
+export default Header;

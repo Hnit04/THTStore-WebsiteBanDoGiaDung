@@ -138,6 +138,9 @@ export function CartProvider({ children }) {
 
   // Tính tổng giá trị giỏ hàng
   const getCartTotal = () => {
+    if (!Array.isArray(cart)) {
+      return 0
+    }
     return cart.reduce((total, item) => {
       return total + item.product.price * item.quantity
     }, 0)
@@ -145,6 +148,9 @@ export function CartProvider({ children }) {
 
   // Tính tổng số lượng sản phẩm
   const getCartCount = () => {
+    if (!Array.isArray(cart)) {
+      return 0
+    }
     return cart.reduce((count, item) => count + item.quantity, 0)
   }
 
