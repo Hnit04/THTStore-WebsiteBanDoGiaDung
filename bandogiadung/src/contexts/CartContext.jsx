@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useState, useContext, useEffect } from "react"
-import { supabase } from "../lib/supabase.js"
+import { getCart, addToCart as apiAddToCart, updateCartItem, removeFromCart as apiRemoveFromCart } from "../lib/api.js"
 import { useAuth } from "./AuthContext.jsx"
 import toast from "react-hot-toast"
 
@@ -37,39 +37,14 @@ export function CartProvider({ children }) {
     }
   }, [cart, isAuthenticated])
 
-  // Tải giỏ hàng từ Supabase
+  // Tải giỏ hàng từ API
   const fetchCart = async () => {
     if (!isAuthenticated) return
 
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from("cart_items")
-        .select(`
-          id,
-          product_id,
-          quantity,
-          products (
-            id,
-            name,
-            price,
-            old_price,
-            image_url,
-            description
-          )
-        `)
-        .eq("user_id", user.id)
-
-      if (error) throw error
-
-      // Chuyển đổi dữ liệu để phù hợp với cấu trúc giỏ hàng
-      const formattedCart = data.map((item) => ({
-        id: item.id,
-        product: item.products,
-        quantity: item.quantity,
-      }))
-
-      setCart(formattedCart)
+      const data = await getCart()
+      setCart(data)
     } catch (error) {
       console.error("Error fetching cart:", error)
       toast.error("Không thể tải giỏ hàng")
@@ -83,36 +58,8 @@ export function CartProvider({ children }) {
     if (isAuthenticated) {
       try {
         setLoading(true)
-
-        // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
-        const { data: existingItem } = await supabase
-          .from("cart_items")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("product_id", product.id)
-          .single()
-
-        if (existingItem) {
-          // Cập nhật số lượng nếu sản phẩm đã tồn tại
-          const { error } = await supabase
-            .from("cart_items")
-            .update({ quantity: existingItem.quantity + quantity })
-            .eq("id", existingItem.id)
-
-          if (error) throw error
-        } else {
-          // Thêm mới nếu sản phẩm chưa có trong giỏ hàng
-          const { error } = await supabase.from("cart_items").insert({
-            user_id: user.id,
-            product_id: product.id,
-            quantity,
-          })
-
-          if (error) throw error
-        }
-
-        // Tải lại giỏ hàng
-        fetchCart()
+        await apiAddToCart(product._id, quantity)
+        fetchCart() // Tải lại giỏ hàng sau khi thêm
         toast.success("Đã thêm vào giỏ hàng")
       } catch (error) {
         console.error("Error adding to cart:", error)
@@ -123,7 +70,7 @@ export function CartProvider({ children }) {
     } else {
       // Xử lý giỏ hàng cục bộ khi không đăng nhập
       setCart((prevCart) => {
-        const existingItemIndex = prevCart.findIndex((item) => item.product.id === product.id)
+        const existingItemIndex = prevCart.findIndex((item) => item.product._id === product._id)
 
         if (existingItemIndex >= 0) {
           // Cập nhật số lượng nếu sản phẩm đã tồn tại
@@ -135,7 +82,7 @@ export function CartProvider({ children }) {
           return [
             ...prevCart,
             {
-              id: `local-${Date.now()}`,
+              _id: `local-${Date.now()}`,
               product,
               quantity,
             },
@@ -154,12 +101,8 @@ export function CartProvider({ children }) {
     if (isAuthenticated) {
       try {
         setLoading(true)
-        const { error } = await supabase.from("cart_items").update({ quantity }).eq("id", itemId).eq("user_id", user.id)
-
-        if (error) throw error
-
-        // Tải lại giỏ hàng
-        fetchCart()
+        await updateCartItem(itemId, quantity)
+        fetchCart() // Tải lại giỏ hàng sau khi cập nhật
       } catch (error) {
         console.error("Error updating cart:", error)
         toast.error("Không thể cập nhật giỏ hàng")
@@ -168,7 +111,7 @@ export function CartProvider({ children }) {
       }
     } else {
       // Cập nhật giỏ hàng cục bộ
-      setCart((prevCart) => prevCart.map((item) => (item.id === itemId ? { ...item, quantity } : item)))
+      setCart((prevCart) => prevCart.map((item) => (item._id === itemId ? { ...item, quantity } : item)))
     }
   }
 
@@ -177,12 +120,8 @@ export function CartProvider({ children }) {
     if (isAuthenticated) {
       try {
         setLoading(true)
-        const { error } = await supabase.from("cart_items").delete().eq("id", itemId).eq("user_id", user.id)
-
-        if (error) throw error
-
-        // Tải lại giỏ hàng
-        fetchCart()
+        await apiRemoveFromCart(itemId)
+        fetchCart() // Tải lại giỏ hàng sau khi xóa
         toast.success("Đã xóa sản phẩm khỏi giỏ hàng")
       } catch (error) {
         console.error("Error removing from cart:", error)
@@ -192,7 +131,7 @@ export function CartProvider({ children }) {
       }
     } else {
       // Xóa khỏi giỏ hàng cục bộ
-      setCart((prevCart) => prevCart.filter((item) => item.id !== itemId))
+      setCart((prevCart) => prevCart.filter((item) => item._id !== itemId))
       toast.success("Đã xóa sản phẩm khỏi giỏ hàng")
     }
   }
@@ -214,10 +153,14 @@ export function CartProvider({ children }) {
     if (isAuthenticated) {
       try {
         setLoading(true)
-        const { error } = await supabase.from("cart_items").delete().eq("user_id", user.id)
-
-        if (error) throw error
-
+        // Gọi API để xóa toàn bộ giỏ hàng
+        // Giả sử API này tồn tại
+        await fetch("/api/cart/clear", {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        })
         setCart([])
       } catch (error) {
         console.error("Error clearing cart:", error)
