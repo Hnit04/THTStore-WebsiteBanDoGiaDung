@@ -32,7 +32,7 @@ function RegisterPage() {
       await register(email, password, { full_name: fullName })
       navigate("/login")
     } catch (err) {
-      // Lỗi đã được xử lý trong hook useAuth
+      toast.error(err.message || "Đã xảy ra lỗi, vui lòng thử lại")
     } finally {
       setIsSubmitting(false)
     }

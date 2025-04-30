@@ -31,7 +31,7 @@ function LoginPage() {
       toast.success("Đăng nhập thành công")
       navigate(redirectTo)
     } catch (err) {
-      // Lỗi đã được xử lý trong hook useAuth
+      toast.error(err.message || "Đã xảy ra lỗi, vui lòng thử lại")
     } finally {
       setIsSubmitting(false)
     }

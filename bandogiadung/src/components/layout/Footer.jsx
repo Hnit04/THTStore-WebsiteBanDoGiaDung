@@ -99,11 +99,11 @@ function Footer() {
               </li>
               <li className="flex items-center">
                 <Phone className="w-5 h-5 mr-2 text-gray-400" />
-                <span className="text-gray-400">(028) 1234 5678</span>
+                <span className="text-gray-400">+84326829327</span>
               </li>
               <li className="flex items-center">
                 <Mail className="w-5 h-5 mr-2 text-gray-400" />
-                <span className="text-gray-400">info@homegoods.com</span>
+                <span className="text-gray-400">trancongtinh20042004@gmail.com</span>
               </li>
             </ul>
           </div>

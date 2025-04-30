@@ -21,6 +21,7 @@ app.use("/api/products", require("./routes/productRoutes"))
 app.use("/api/categories", require("./routes/categoryRoutes"))
 app.use("/api/cart", require("./routes/cartRoutes"))
 app.use("/api/orders", require("./routes/orderRoutes"))
+app.use("/api/users", require("./routes/userRoutes")) // Thêm route mới
 
 // Error handler
 app.use((err, req, res, next) => {

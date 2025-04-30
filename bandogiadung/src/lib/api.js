@@ -27,10 +27,12 @@ async function fetchAPI(endpoint, options = {}) {
       throw new Error(data.error || "Đã xảy ra lỗi")
     }
 
-    return data
+    return data.data || data
   } catch (error) {
-    console.error("API Error:", error)
-    throw error
+    const statusCode = error.response?.status || "unknown";
+    const errorMessage = error.response?.data?.error || error.message || "An unknown error occurred";
+    console.error(`API Error [${statusCode}]:`, errorMessage);
+    throw new Error(`Failed to fetch API at ${url} [${statusCode}]: ${errorMessage}`);
   }
 }
 
@@ -50,18 +52,18 @@ export async function getProducts(options = {}) {
   const endpoint = `/products${queryString ? `?${queryString}` : ""}`
 
   const response = await fetchAPI(endpoint)
-  return response.data
+  return response
 }
 
 export async function getProductById(id) {
   const response = await fetchAPI(`/products/${id}`)
-  return response.data
+  return response
 }
 
 // Danh mục
 export async function getCategories() {
   const response = await fetchAPI("/categories")
-  return response.data
+  return response
 }
 
 // Đơn hàng
@@ -70,12 +72,19 @@ export async function createOrder(orderData) {
     method: "POST",
     body: JSON.stringify(orderData),
   })
-  return response.data
+  return response
 }
 
 export async function getUserOrders() {
   const response = await fetchAPI("/orders")
-  return response.data
+  return response
+}
+
+export async function cancelOrder(orderId) {
+  const response = await fetchAPI(`/orders/${orderId}/cancel`, {
+    method: "PUT",
+  })
+  return response
 }
 
 // Xác thực
@@ -112,18 +121,36 @@ export async function logout() {
 export async function getCurrentUser() {
   try {
     const response = await fetchAPI("/auth/me")
-    return response.data
+    return response
   } catch (error) {
+    console.error("Failed to fetch current user:", error.message || error);
     // Nếu không lấy được thông tin user, xóa token
-    localStorage.removeItem("token")
+    localStorage.removeItem("token");
     return null
   }
+}
+
+// Người dùng
+export async function updateUserProfile(userData) {
+  const response = await fetchAPI("/users/profile", {
+    method: "PUT",
+    body: JSON.stringify(userData),
+  })
+  return response
+}
+
+export async function changePassword(passwordData) {
+  const response = await fetchAPI("/users/change-password", {
+    method: "PUT",
+    body: JSON.stringify(passwordData),
+  })
+  return response
 }
 
 // Giỏ hàng
 export async function getCart() {
   const response = await fetchAPI("/cart")
-  return response.data
+  return response
 }
 
 export async function addToCart(productId, quantity) {
@@ -131,7 +158,7 @@ export async function addToCart(productId, quantity) {
     method: "POST",
     body: JSON.stringify({ productId, quantity }),
   })
-  return response.data
+  return response
 }
 
 export async function updateCartItem(itemId, quantity) {
@@ -139,12 +166,12 @@ export async function updateCartItem(itemId, quantity) {
     method: "PUT",
     body: JSON.stringify({ quantity }),
   })
-  return response.data
+  return response
 }
 
 export async function removeFromCart(itemId) {
   const response = await fetchAPI(`/cart/${itemId}`, {
     method: "DELETE",
   })
-  return response.data
+  return response
 }
