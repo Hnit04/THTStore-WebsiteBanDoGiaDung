@@ -16,6 +16,7 @@ import FAQPage from "./pages/FAQPage.jsx"
 import PolicyPage from "./pages/PolicyPage.jsx"
 import ProductAdminPage from "./pages/ProductAdminPage.jsx"
 import CustomerPage from "./pages/CustomesPage.jsx"
+
 function App() {
   return (
     <Routes>
