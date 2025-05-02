@@ -12,7 +12,7 @@ const ProductSchema = new mongoose.Schema({
     required: [true, "Vui lòng nhập giá sản phẩm"],
     min: [0, "Giá sản phẩm không được âm"],
   },
-  oldPrice: {
+  old_price: {
     type: Number,
     default: null,
   },
@@ -20,7 +20,7 @@ const ProductSchema = new mongoose.Schema({
     type: String,
     required: [true, "Vui lòng nhập mô tả sản phẩm"],
   },
-  imageUrl: {
+  image_url: {
     type: String,
     default: "/placeholder.svg",
   },

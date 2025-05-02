@@ -1,106 +1,78 @@
 const Product = require("../models/Product")
 
-// @desc    Get all products
+// @desc    Get all products with filter + pagination
 // @route   GET /api/products
 // @access  Public
-exports.getProducts = async (req, res, next) => {
+exports.getProducts = async (req, res) => {
   try {
-    let query
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 20
+    const skip = (page - 1) * limit
 
-    // Copy req.query
-    const reqQuery = { ...req.query }
+    const filter = {}
 
-    // Fields to exclude
-    const removeFields = ["select", "sort", "page", "limit"]
-
-    // Loop over removeFields and delete them from reqQuery
-    removeFields.forEach((param) => delete reqQuery[param])
-
-    // Create query string
-    let queryStr = JSON.stringify(reqQuery)
-
-    // Create operators ($gt, $gte, etc)
-    queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, (match) => `$${match}`)
-
-    // Finding resource
-    query = Product.find(JSON.parse(queryStr)).populate("category")
-
-    // Select Fields
-    if (req.query.select) {
-      const fields = req.query.select.split(",").join(" ")
-      query = query.select(fields)
+    // Lọc theo category_id (ví dụ: ?category=Kitchen)
+    if (req.query.category) {
+      filter.category_id = req.query.category
     }
 
-    // Sort
-    if (req.query.sort) {
-      const sortBy = req.query.sort.split(",").join(" ")
-      query = query.sort(sortBy)
-    } else {
-      query = query.sort("-createdAt")
+    // Tìm kiếm theo tên
+    if (req.query.name) {
+      filter.name = { $regex: req.query.name, $options: "i" }
     }
 
-    // Pagination
-    const page = Number.parseInt(req.query.page, 10) || 1
-    const limit = Number.parseInt(req.query.limit, 10) || 10
-    const startIndex = (page - 1) * limit
-    const endIndex = page * limit
-    const total = await Product.countDocuments()
-
-    query = query.skip(startIndex).limit(limit)
-
-    // Executing query
-    const products = await query
-
-    // Pagination result
-    const pagination = {}
-
-    if (endIndex < total) {
-      pagination.next = {
-        page: page + 1,
-        limit,
-      }
+    // Lọc theo giá
+    if (req.query["price[gte]"]) {
+      filter.price = { ...filter.price, $gte: Number(req.query["price[gte]"]) }
+    }
+    if (req.query["price[lte]"]) {
+      filter.price = { ...filter.price, $lte: Number(req.query["price[lte]"]) }
     }
 
-    if (startIndex > 0) {
-      pagination.prev = {
-        page: page - 1,
-        limit,
-      }
-    }
+    const total = await Product.countDocuments(filter)
+    const products = await Product.find(filter).skip(skip).limit(limit)
 
     res.status(200).json({
       success: true,
       count: products.length,
-      pagination,
       data: products,
+      pagination: {
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+      },
     })
-  } catch (err) {
-    next(err)
+  } catch (error) {
+    console.error("Lỗi getProducts:", error)
+    res.status(500).json({ success: false, error: "Lỗi server khi lấy sản phẩm" })
   }
 }
+
 
 // @desc    Get single product
 // @route   GET /api/products/:id
 // @access  Public
 exports.getProduct = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id).populate("category")
+    const product = await Product.findOne({ id: req.params.id }).populate("category");
 
     if (!product) {
       return res.status(404).json({
         success: false,
         error: "Không tìm thấy sản phẩm",
-      })
+      });
     }
+    console.log("Product found:", product.image_url); // Log the found product
 
     res.status(200).json({
       success: true,
       data: product,
-    })
+    });
   } catch (err) {
-    next(err)
+    next(err);
   }
-}
+};
+
 
 // @desc    Create new product
 // @route   POST /api/products

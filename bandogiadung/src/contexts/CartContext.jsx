@@ -21,7 +21,8 @@ export function CartProvider({ children }) {
       const localCart = localStorage.getItem("cart")
       if (localCart) {
         try {
-          setCart(JSON.parse(localCart))
+          const parsedCart = JSON.parse(localCart)
+          setCart(Array.isArray(parsedCart) ? parsedCart : [])
         } catch (error) {
           console.error("Error parsing cart from localStorage:", error)
           setCart([])
@@ -44,7 +45,7 @@ export function CartProvider({ children }) {
     try {
       setLoading(true)
       const data = await getCart()
-      setCart(data)
+      setCart(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error("Error fetching cart:", error)
       toast.error("Không thể tải giỏ hàng")

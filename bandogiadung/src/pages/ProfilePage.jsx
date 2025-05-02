@@ -6,6 +6,7 @@ import { getUserOrders } from "../lib/api.js"
 import { formatCurrency, formatDate } from "../lib/utils.js"
 import { Link } from "react-router-dom"
 import toast from "react-hot-toast"
+import { updateUserProfile } from "../lib/api.js"
 
 function ProfilePage() {
   const { user, loading: authLoading } = useAuth()
@@ -73,19 +74,8 @@ function ProfilePage() {
       setIsSubmitting(true)
 
       // Gọi API cập nhật thông tin người dùng
-      const response = await fetch("/api/users/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        throw new Error("Không thể cập nhật thông tin")
-      }
-
+      await updateUserProfile(formData)
+      window.location.reload() // Tải lại trang để cập nhật thông tin
       toast.success("Cập nhật thông tin thành công")
     } catch (error) {
       console.error("Error updating profile:", error)

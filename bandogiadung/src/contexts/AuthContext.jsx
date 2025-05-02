@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
 
       const data = await apiRegister(userData)
 
-      toast.success("Đ��ng ký thành công! Vui lòng đăng nhập.")
+      toast.success("Đăng ký thành công! Vui lòng đăng nhập.")
       return data
     } catch (err) {
       setError(err.message || "Đăng ký thất bại")

@@ -27,7 +27,15 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  avatar: {
+  city: {
+    type: String,
+    default: "",
+  },
+  district: {
+    type: String,
+    default: "",
+  },
+  ward: {
     type: String,
     default: "",
   },
@@ -54,10 +62,10 @@ UserSchema.pre("save", async function (next) {
 
 // Sign JWT and return
 UserSchema.methods.getSignedJwtToken = function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE,
-  })
+  const expiresIn = String(process.env.JWT_EXPIRE).trim() // ép kiểu & loại bỏ ký tự lạ
+  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, { expiresIn })
 }
+
 
 // Match user entered password to hashed password in database
 UserSchema.methods.matchPassword = async function (enteredPassword) {

@@ -10,7 +10,11 @@ import ProfilePage from "./pages/ProfilePage.jsx"
 import CheckoutPage from "./pages/CheckoutPage.jsx"
 import NotFoundPage from "./pages/NotFoundPage.jsx"
 import ProtectedRoute from "./components/auth/ProtectedRoute.jsx"
-
+import AboutPage from "./pages/AboutPage.jsx"
+import Contact from "./pages/Contact.jsx"
+import FAQPage from "./pages/FAQPage.jsx"
+import PolicyPage from "./pages/PolicyPage.jsx"
+import ProductAdminPage from "./pages/ProductAdminPage.jsx"
 function App() {
   return (
     <Routes>
@@ -21,7 +25,14 @@ function App() {
         <Route path="cart" element={<CartPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
+        <Route path="about" element={<AboutPage />} />
+        <Route path="contact" element={<Contact />} />
+        <Route path="faq" element={<FAQPage />} />
+        <Route path="privacy-policy" element={<PolicyPage />} />
+        {/* Admin */}
+        <Route path="admin/products" element={<ProductAdminPage/>} />
 
+        {/* Public Routes */}
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="profile" element={<ProfilePage />} />

@@ -1,14 +1,14 @@
-import { Link } from "react-router-dom";
-import { useProducts } from "../hooks/useProducts.js";
-import { useCategories } from "../hooks/useCategories.js";
-import { formatCurrency } from "../lib/utils.js";
+import { Link } from "react-router-dom"
+import { useProducts } from "../hooks/useProducts.js"
+import { useCategories } from "../hooks/useCategories.js"
+import { formatCurrency } from "../lib/utils.js"
 
 function HomePage() {
-  const { products = [], loading: productsLoading } = useProducts({ limit: 8 });
-  const { categories, loading: categoriesLoading } = useCategories();
+  const { products, loading: productsLoading } = useProducts({ limit: 8 })
+  const { categories, loading: categoriesLoading } = useCategories()
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4">
       {/* Hero Section */}
       <div className="relative bg-gradient-to-r from-red-600 to-red-800 text-white rounded-xl overflow-hidden my-8">
         <div className="container mx-auto px-4 py-16 md:py-24">
@@ -41,7 +41,7 @@ function HomePage() {
       </div>
 
       {/* Categories Section */}
-      <div className="py-12">
+      <div className="py-12 border border-gray-300 rounded-xl shadow-md my-8 p-4">
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold mb-2">Danh Mục Sản Phẩm</h2>
           <p className="text-gray-600">Khám phá đa dạng các sản phẩm theo nhu cầu của bạn</p>
@@ -59,7 +59,7 @@ function HomePage() {
               <Link
                 key={category.id}
                 to={`/products?category=${category.id}`}
-                className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 text-center"
+                className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 text-center border border-gray-200"
               >
                 <div
                   className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-4 ${
@@ -87,58 +87,50 @@ function HomePage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {productsLoading
-            ? [...Array(8)].map((_, index) => (
-                <div
-                  key={`loading-${index}`}
-                  className="bg-white rounded-lg shadow overflow-hidden h-80 flex flex-col"
-                >
-                  <div className="h-48 bg-gray-100 animate-pulse"></div>
-                  <div className="p-4 flex flex-col flex-grow">
-                    <div className="h-6 bg-gray-100 animate-pulse mb-2"></div>
-                    <div className="flex justify-between items-center flex-grow">
-                      <div className="h-5 w-1/3 bg-gray-100 animate-pulse"></div>
-                      <div className="h-8 w-16 bg-gray-100 animate-pulse rounded-md"></div>
-                    </div>
+        {productsLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, index) => (
+              <div key={index} className="bg-gray-100 animate-pulse rounded-lg h-80"></div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {products.map((product) => (
+              <div key={product.id} className="bg-white rounded-lg shadow overflow-hidden group border border-gray-200">
+                <Link to={`/products/${product.id}`}>
+                  <div className="h-48 overflow-hidden">
+                    <img
+                      src={product.image_url || "/placeholder.svg?height=400&width=400"}
+                      alt={product.name}
+                      className="w-full h-full object-contain transition-transform group-hover:scale-105"
+                    />
                   </div>
-                </div>
-              ))
-            : products.map((product) => (
-                <div key={product.id} className="bg-white rounded-lg shadow overflow-hidden group h-80 flex flex-col">
+                </Link>
+                <div className="p-4">
                   <Link to={`/products/${product.id}`}>
-                    <div className="h-48 overflow-hidden">
-                      <img
-                        src={product.image_url || "/placeholder.svg?height=400&width=400"}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      />
-                    </div>
+                    <h3 className="font-medium text-lg mb-2 hover:text-red-600 transition-colors">{product.name}</h3>
                   </Link>
-                  <div className="p-4 flex flex-col flex-grow">
-                    <Link to={`/products/${product.id}`}>
-                      <h3 className="font-medium text-lg mb-2 hover:text-red-600 transition-colors">{product.name}</h3>
-                    </Link>
-                    <div className="flex justify-between items-center flex-grow">
-                      <div>
-                        <span className="font-bold text-red-600">{formatCurrency(product.price)}</span>
-                        {product.old_price && (
-                          <span className="text-gray-500 text-sm line-through ml-2">
-                            {formatCurrency(product.old_price)}
-                          </span>
-                        )}
-                      </div>
-                      <Link
-                        to={`/products/${product.id}`}
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm"
-                      >
-                        Chi tiết
-                      </Link>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-bold text-red-600">{formatCurrency(product.price)}</span>
+                      {product.old_price && (
+                        <span className="text-gray-500 text-sm line-through ml-2">
+                          {formatCurrency(product.old_price)}
+                        </span>
+                      )}
                     </div>
+                    <Link
+                      to={`/products/${product.id}`}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm"
+                    >
+                      Chi tiết
+                    </Link>
                   </div>
                 </div>
-              ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Testimonials Section */}
@@ -198,7 +190,7 @@ function HomePage() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default HomePage;
+export default HomePage

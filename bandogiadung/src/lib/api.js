@@ -26,8 +26,9 @@ async function fetchAPI(endpoint, options = {}) {
     if (!response.ok) {
       throw new Error(data.error || "Đã xảy ra lỗi")
     }
-
-    return data.data || data
+    
+    return data.data || data // Trả về dữ liệu từ API
+    
   } catch (error) {
     const statusCode = error.response?.status || "unknown";
     const errorMessage = error.response?.data?.error || error.message || "An unknown error occurred";
