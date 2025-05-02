@@ -33,6 +33,7 @@ function Header() {
   const getNavLinks = () => {
     if (isAdmin) {
       return [
+        { to: "/", label: "Trang chủ" },
         { to: "/admin/products", label: "Sản phẩm" },
         { to: "/admin/customers", label: "Khách hàng" },
         { to: "/admin/orders", label: "Hóa đơn" },
@@ -112,7 +113,8 @@ function Header() {
                   {isAdmin ? (
                     // Menu cho admin
                     <>
-                      <Link to="/admin/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
+                      <Link 
+                      to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
                         Thông tin cá nhân
                       </Link>
                       <Link to="/admin/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
