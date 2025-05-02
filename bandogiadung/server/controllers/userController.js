@@ -1,5 +1,6 @@
 const User = require("../models/User")
 const bcrypt = require("bcrypt")
+const Order = require("../models/Order")
 
 // @desc    Get user profile
 // @route   GET /api/users/profile
@@ -23,6 +24,51 @@ exports.getUserProfile = async (req, res, next) => {
     next(err);
   }
 };
+
+const Product = require('../models/Product');
+
+exports.getAllOrders = async (req, res, next) => {
+  try {
+    console.log("Gọi getAllOrders...");
+    const orders = await Order.find().lean(); // Use lean() for better performance
+
+    const ordersWithImages = await Promise.all(
+      orders.map(async (order) => {
+        const itemsWithImages = await Promise.all(
+          order.items.map(async (item) => {
+            const product = await Product.findOne({ id: item.product_id }).lean(); //  lean() here too
+            return {
+              ...item, 
+              image_url: product?.image_url || null,
+              product_name: product?.name || "Unknown Product", // Include product name
+            };
+          })
+        );
+
+        return {
+          ...order,
+          items: itemsWithImages,
+        };
+      })
+    );
+    console.log("Danh sách đơn hàng:", ordersWithImages);
+
+    res.status(200).json({
+      success: true,
+      count: ordersWithImages.length,
+      data: ordersWithImages,
+    });
+
+    console.log("Danh sách đơn hàng:", ordersWithImages);
+  } catch (err) {
+    console.log("Lỗi khi gọi getAllOrders:", err);
+    next(err);
+  }
+};
+
+
+
+
 
 
 // @desc    Update user profile
@@ -122,7 +168,6 @@ exports.getAllUsers = async (req, res, next) => {
       count: users.length,
       data: users,
     });
-    console.log("User"+users);
   } catch (err) {
     next(err);
   }

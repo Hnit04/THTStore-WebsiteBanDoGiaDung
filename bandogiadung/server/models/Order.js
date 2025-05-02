@@ -8,15 +8,15 @@ const OrderSchema = new mongoose.Schema({
   },
   items: [
     {
-      product: {
+      product_id: {
         type: mongoose.Schema.ObjectId,
         ref: "Product",
       },
-      productName: {
+      product_name: {
         type: String,
         required: true,
       },
-      productPrice: {
+      product_price: {
         type: Number,
         required: true,
       },
@@ -27,31 +27,31 @@ const OrderSchema = new mongoose.Schema({
       },
     },
   ],
-  totalAmount: {
+  total_amount: {
     type: Number,
     required: true,
   },
-  shippingAddress: {
+  shipping_address: {
     type: String,
     required: true,
   },
-  shippingCity: {
+  shipping_city: {
     type: String,
     required: true,
   },
-  shippingPostalCode: {
+  shipping_postalCode: {
     type: String,
   },
-  shippingCountry: {
+  shipping_country: {
     type: String,
     default: "Vietnam",
   },
-  paymentMethod: {
+  payment_method: {
     type: String,
     required: true,
     enum: ["cod", "banking", "momo", "zalopay"],
   },
-  paymentStatus: {
+  payment_status: {
     type: String,
     required: true,
     enum: ["pending", "completed", "failed", "refunded"],
@@ -63,11 +63,11 @@ const OrderSchema = new mongoose.Schema({
     enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
     default: "pending",
   },
-  createdAt: {
+  created_at: {
     type: Date,
     default: Date.now,
   },
-  updatedAt: {
+  updated_at: {
     type: Date,
     default: Date.now,
   },
