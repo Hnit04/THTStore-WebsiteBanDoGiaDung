@@ -44,9 +44,9 @@ function CartPage() {
 
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="w-full lg:w-2/3">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="bg-black rounded-lg shadow-md overflow-hidden">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-black-50">
                 <tr>
                   <th className="py-4 px-6 text-left">Sản phẩm</th>
                   <th className="py-4 px-6 text-center">Số lượng</th>
@@ -126,7 +126,7 @@ function CartPage() {
         </div>
 
         <div className="w-full lg:w-1/3">
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-black rounded-lg shadow-md p-6">
             <h2 className="text-lg font-bold mb-4">Tóm tắt đơn hàng</h2>
 
             <div className="space-y-4">
