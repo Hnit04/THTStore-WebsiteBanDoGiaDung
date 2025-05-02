@@ -1,11 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useProducts } from "../hooks/useProducts.js"
 import { useCategories } from "../hooks/useCategories.js"
 import { formatCurrency } from "../lib/utils.js"
 import { Link } from "react-router-dom"
+
+// Simple debounce function
+const debounce = (func, wait) => {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+};
 
 function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -22,12 +31,11 @@ function ProductsPage() {
   })
 
   const [priceRange, setPriceRange] = useState([filters.minPrice, filters.maxPrice])
-
   const { products, loading: productsLoading } = useProducts(filters)
   const { categories, loading: categoriesLoading } = useCategories()
   const [viewMode, setViewMode] = useState("grid")
 
-  // Cập nhật URL khi filters thay đổi
+  // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams()
     if (filters.category) params.set("category", filters.category)
@@ -41,7 +49,7 @@ function ProductsPage() {
   const handleCategoryChange = (categoryId) => {
     setFilters((prev) => ({
       ...prev,
-      category: prev.category === categoryId ? "" : categoryId,
+      category: prev.category === categoryId ? "" : categoryId, // Toggle single selection
     }))
   }
 
@@ -53,11 +61,21 @@ function ProductsPage() {
     }))
   }
 
+  // Debounced search handler
+  const debouncedSearchChange = useCallback(
+    debounce((value) => {
+      setFilters((prev) => ({
+        ...prev,
+        search: value,
+      }))
+    }, 300),
+    []
+  )
+
   const handleSearchChange = (e) => {
-    setFilters((prev) => ({
-      ...prev,
-      search: e.target.value,
-    }))
+    const value = e.target.value
+    setFilters((prev) => ({ ...prev, search: value })) // Update input immediately
+    debouncedSearchChange(value) // Debounced API call
   }
 
   const handleResetFilters = () => {
@@ -77,8 +95,8 @@ function ProductsPage() {
       <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar Filters */}
         <div className="w-full md:w-1/4">
-          <div className="bg-white rounded-lg shadow p-4 mb-4">
-            <h2 className="font-bold text-lg mb-4">Tìm kiếm</h2>
+          <div className="bg-black rounded-lg shadow p-4 mb-4">
+            <h2 className="font-bold text-lg mb-4 text-white">Tìm kiếm</h2>
             <input
               type="text"
               placeholder="Tìm kiếm sản phẩm..."
@@ -88,8 +106,8 @@ function ProductsPage() {
             />
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4 mb-4">
-            <h2 className="font-bold text-lg mb-4">Danh mục</h2>
+          <div className="bg-black rounded-lg shadow p-4 mb-4">
+            <h2 className="font-bold text-lg mb-4 text-white">Danh mục</h2>
             {categoriesLoading ? (
               <div className="animate-pulse space-y-2">
                 {[...Array(5)].map((_, index) => (
@@ -107,15 +125,15 @@ function ProductsPage() {
                       onChange={() => handleCategoryChange(category.id)}
                       className="mr-2"
                     />
-                    <label htmlFor={`category-${category.id}`}>{category.name}</label>
+                    <label htmlFor={`category-${category.id}`} className="text-white">{category.name}</label>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4 mb-4">
-            <h2 className="font-bold text-lg mb-4">Giá</h2>
+          <div className="bg-black rounded-lg shadow p-4 mb-4">
+            <h2 className="font-bold text-lg mb-4 text-white">Giá</h2>
             <div className="mb-4">
               <input
                 type="range"
@@ -136,7 +154,7 @@ function ProductsPage() {
                 className="w-full"
               />
             </div>
-            <div className="flex justify-between text-sm mb-4">
+            <div className="flex justify-between text-sm mb-4 text-white">
               <span>{formatCurrency(priceRange[0])}</span>
               <span>{formatCurrency(priceRange[1])}</span>
             </div>
@@ -173,7 +191,8 @@ function ProductsPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path
                     fillRule="evenodd"
-                    d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                    d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H MOUSEMOVEDOWNTOUCHSTARTMOUSEMOVEDOWNTOUCHMOVEUPMOUSEMOVESELECTMOUSEOUTMOUSEOVERMOUSEUPDRAGSTARTDRAGENDDROP
+                    d=M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
                     clipRule="evenodd"
                   />
                 </svg>
