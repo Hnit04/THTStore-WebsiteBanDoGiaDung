@@ -109,3 +109,22 @@ exports.changePassword = async (req, res, next) => {
     next(err)
   }
 }
+
+// @desc    Get all users
+// @route   GET /api/users
+// @access  Private/Admin
+exports.getAllUsers = async (req, res, next) => {
+  try {
+    const users = await User.find({ role: "user" }).select("-password"); // Chỉ lấy user, không lấy password
+
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      data: users,
+    });
+    console.log("User"+users);
+  } catch (err) {
+    next(err);
+  }
+};
+
