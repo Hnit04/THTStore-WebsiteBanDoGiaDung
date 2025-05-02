@@ -6,23 +6,24 @@ const bcrypt = require("bcrypt")
 // @access  Private
 exports.getUserProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id)
+    const user = await User.findOne({ email: req.user.email }); // Tìm theo email
 
     if (!user) {
       return res.status(404).json({
         success: false,
         error: "Không tìm thấy người dùng",
-      })
+      });
     }
 
     res.status(200).json({
       success: true,
       data: user,
-    })
+    });
   } catch (err) {
-    next(err)
+    next(err);
   }
-}
+};
+
 
 // @desc    Update user profile
 // @route   PUT /api/users/profile

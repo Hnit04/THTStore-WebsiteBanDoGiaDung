@@ -41,7 +41,7 @@ exports.login = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        error: "Thông tin đăng nhập không hợp lệ",
+        error: "Thông tin đăng nhập không hợp lệ1",
       })
     }
 
@@ -81,9 +81,8 @@ exports.getMe = async (req, res, next) => {
 // @route   POST /api/auth/logout
 // @access  Private
 exports.logout = async (req, res, next) => {
-  // Sửa cách thiết lập cookie khi đăng xuất
   res.cookie("token", "none", {
-    expires: new Date(Date.now() + 10 * 1000), // 10 giây
+    expires: new Date(Date.now() + 10 * 1000),
     httpOnly: true,
   })
 
@@ -99,8 +98,7 @@ const sendTokenResponse = (user, statusCode, res) => {
   const token = user.getSignedJwtToken()
 
   const options = {
-    // Sửa cách thiết lập thời gian hết hạn
-    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 ngày
+    expires: new Date(Date.now() + Number(process.env.JWT_COOKIE_EXPIRE) * 24 * 60 * 60 * 1000),
     httpOnly: true,
   }
 

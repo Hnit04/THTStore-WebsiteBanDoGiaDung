@@ -21,7 +21,8 @@ export function CartProvider({ children }) {
       const localCart = localStorage.getItem("cart")
       if (localCart) {
         try {
-          setCart(JSON.parse(localCart))
+          const parsedCart = JSON.parse(localCart)
+          setCart(Array.isArray(parsedCart) ? parsedCart : [])
         } catch (error) {
           console.error("Error parsing cart from localStorage:", error)
           setCart([])
@@ -44,7 +45,7 @@ export function CartProvider({ children }) {
     try {
       setLoading(true)
       const data = await getCart()
-      setCart(data)
+      setCart(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error("Error fetching cart:", error)
       toast.error("Không thể tải giỏ hàng")
@@ -138,9 +139,6 @@ export function CartProvider({ children }) {
 
   // Tính tổng giá trị giỏ hàng
   const getCartTotal = () => {
-    if (!Array.isArray(cart)) {
-      return 0
-    }
     return cart.reduce((total, item) => {
       return total + item.product.price * item.quantity
     }, 0)
@@ -148,9 +146,6 @@ export function CartProvider({ children }) {
 
   // Tính tổng số lượng sản phẩm
   const getCartCount = () => {
-    if (!Array.isArray(cart)) {
-      return 0
-    }
     return cart.reduce((count, item) => count + item.quantity, 0)
   }
 
