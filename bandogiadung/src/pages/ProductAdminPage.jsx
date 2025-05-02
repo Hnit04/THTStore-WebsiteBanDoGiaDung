@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect, useCallback } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom"
 import { useProducts } from "../hooks/useProducts.js"
@@ -5,7 +7,7 @@ import { useCategories } from "../hooks/useCategories.js"
 import { formatCurrency } from "../lib/utils.js"
 import { Link } from "react-router-dom"
 
-function ProductsPage() {
+function ProductAdminPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
 
@@ -31,11 +33,11 @@ function ProductsPage() {
     minPriceParam ? Number.parseInt(minPriceParam) : 0,
     maxPriceParam ? Number.parseInt(maxPriceParam) : 5000000,
   ])
+
   // Fetch data based on current filters and refreshTrigger
   const { products, loading: productsLoading, refetch } = useProducts(filters)
   const { categories, loading: categoriesLoading } = useCategories()
   const [viewMode, setViewMode] = useState("grid")
-
   // Function to update URL and trigger data refresh
   const updateFiltersAndURL = useCallback(
     (newFilters) => {
@@ -62,8 +64,7 @@ function ProductsPage() {
     },
     [navigate, refetch],
   )
-  
-
+  console.log("Ảnh" +products[0]?.image_url)
   // Update filters when URL parameters change
   useEffect(() => {
     const newFilters = {
@@ -125,6 +126,7 @@ function ProductsPage() {
       ...(priceRange[1] < 5000000 ? { maxPrice: priceRange[1].toString() } : {}),
     }).toString()}`
   }
+
   const handleSearchChange = (e) => {
     const newFilters = {
       ...filters,
@@ -265,7 +267,6 @@ function ProductsPage() {
                 </svg>
               </button>
             </div>
-            
           </div>
 
           {productsLoading ? (
@@ -295,11 +296,10 @@ function ProductsPage() {
                   <Link to={`/products/${product.id}`}>
                     <div className="h-48 overflow-hidden">
                       <img
-                        src={product.image_url || "/placeholder.svg?height=400&width=400"}
+                        src={"/"+product.image_url || "/placeholder.svg?height=400&width=400"}
                         alt={product.name}
                         className="w-full h-full object-contain "
                       />
-                      
                     </div>
                   </Link>
                   <div className="p-4">
@@ -375,4 +375,4 @@ function ProductsPage() {
   )
 }
 
-export default ProductsPage
+export default ProductAdminPage

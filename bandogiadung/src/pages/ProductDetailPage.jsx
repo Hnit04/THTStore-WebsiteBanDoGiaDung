@@ -28,9 +28,10 @@ function ProductDetailPage() {
         setLoading(false)
       }
     }
-
+    
     loadProduct()
   }, [id])
+  
 
   const handleAddToCart = () => {
     addToCart(product, quantity)
@@ -69,7 +70,7 @@ function ProductDetailPage() {
       </div>
     )
   }
-
+  console.log("Image URL:", product.image_url);
   return (
     <div className="container mx-auto px-4 py-8">
       <Link to="/products" className="flex items-center text-gray-600 mb-6 hover:text-gray-900">
@@ -89,11 +90,12 @@ function ProductDetailPage() {
         <div className="w-full md:w-1/2">
           <div className="bg-gray-100 rounded-lg overflow-hidden">
             <img
-              src={product.image_url || "/placeholder.svg?height=600&width=600"}
+              src={"/" +product.image_url || "/placeholder.svg?height=600&width=600"}
               alt={product.name}
               className="w-full h-auto object-cover"
             />
           </div>
+          
         </div>
 
         <div className="w-full md:w-1/2">
