@@ -15,6 +15,7 @@ import Contact from "./pages/Contact.jsx"
 import FAQPage from "./pages/FAQPage.jsx"
 import PolicyPage from "./pages/PolicyPage.jsx"
 import ProductAdminPage from "./pages/ProductAdminPage.jsx"
+import CustomerPage from "./pages/CustomesPage.jsx"
 function App() {
   return (
     <Routes>
@@ -31,7 +32,7 @@ function App() {
         <Route path="privacy-policy" element={<PolicyPage />} />
         {/* Admin */}
         <Route path="admin/products" element={<ProductAdminPage/>} />
-
+        <Route path="admin/customers" element={<CustomerPage/>} />
         {/* Public Routes */}
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>

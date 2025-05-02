@@ -76,6 +76,12 @@ export async function createOrder(orderData) {
   return response
 }
 
+export async function getAllUsers() {
+  const response = await fetchAPI("/users/customer")
+  // console.log("User", response)
+  return response
+}
+
 export async function getUserOrders() {
   const response = await fetchAPI("/orders")
   return response
