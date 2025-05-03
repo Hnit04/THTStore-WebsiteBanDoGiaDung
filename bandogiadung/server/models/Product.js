@@ -31,6 +31,7 @@ const ProductSchema = new mongoose.Schema({
   },
   category_id: { // Sửa tên trường thành category_id
     type: String, // và kiểu dữ liệu thành String
+    ref: 'Category', // Tham chiếu đến model Category
     required: true,
   },
   rating: {
