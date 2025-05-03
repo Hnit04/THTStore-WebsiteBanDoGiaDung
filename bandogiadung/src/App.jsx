@@ -32,7 +32,7 @@ function App() {
         <Route path="faq" element={<FAQPage />} />
         <Route path="privacy-policy" element={<PolicyPage />} />
         {/* Admin */}
-        <Route path="admin/products" element={<ProductAdminPage/>} />
+        <Route path="admin/products" element={<ProductsPage/>} />
         <Route path="admin/customers" element={<CustomerPage/>} />
         <Route path="admin/orders" element={<OrderPage/>} />
         {/* Public Routes */}

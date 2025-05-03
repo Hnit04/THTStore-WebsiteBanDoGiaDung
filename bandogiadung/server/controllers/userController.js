@@ -179,3 +179,64 @@ exports.getAllUsers = async (req, res, next) => {
   }
 };
 
+
+// @desc    Create new product
+// @route   POST /api/products
+// @access  Private (hoặc Public tùy yêu cầu)
+exports.createProduct = async (req, res, next) => {
+  try {
+    const {
+      name,
+      price,
+      old_price,
+      image_url,
+      description,
+      category_id,
+      rating,
+      review_count,
+      is_new,
+      discount,
+      stock,
+      created_at,
+    } = req.body;
+
+    // Kiểm tra trường bắt buộc
+    if (!name || !price || !category_id) {
+      return res.status(400).json({
+        success: false,
+        error: "Thiếu trường bắt buộc (name, price, category_id)",
+      });
+    }
+
+    // Đếm số lượng sản phẩm hiện tại
+    const total = await Product.countDocuments();
+
+    // Sinh id tự động dựa trên số lượng sản phẩm hiện có
+    const generatedId = (total + 1).toString();
+
+    // Tạo sản phẩm mới
+    const product = await Product.create({
+      id: generatedId,
+      name,
+      price,
+      old_price,
+      image_url,
+      description,
+      category_id,
+      rating,
+      review_count,
+      is_new,
+      discount,
+      stock,
+      created_at: created_at || new Date().toISOString(),
+    });
+    console.log("Product created:", product); // Log the created product
+    res.status(201).json({
+      success: true,
+      data: product,
+    });
+  } catch (err) {
+    console.error("Lỗi createProduct:", err);
+    res.status(500).json({ success: false, error: "Lỗi server khi tạo sản phẩm" });
+  }
+};

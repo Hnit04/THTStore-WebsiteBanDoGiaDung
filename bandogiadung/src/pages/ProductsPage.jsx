@@ -4,11 +4,16 @@ import { useProducts } from "../hooks/useProducts.js"
 import { useCategories } from "../hooks/useCategories.js"
 import { formatCurrency } from "../lib/utils.js"
 import { Link } from "react-router-dom"
-
+import { useAuth } from "../contexts/AuthContext.jsx"
+import AddProductModal from "../components/ui/AddProductModal.jsx"
 function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { user, isAuthenticated } = useAuth()
+    // Kiểm tra xem người dùng có phải là admin không
+  const isAdmin = isAuthenticated && user && user.role === "admin"
+  // console.log("isAdmin", isAdmin)
   // Extract parameters from URL
   const categoryParam = searchParams.get("category")
   const searchParam = searchParams.get("search")
@@ -267,7 +272,28 @@ function ProductsPage() {
             </div>
             
           </div>
+          {isAdmin ?(
+              <div className="mb-4">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md"
+              >
+                Thêm sản phẩm
+              </button>
+        
+              {isModalOpen && (
+              <AddProductModal
+                isOpen={isModalOpen}     // 🔴 BẠT BUỘC PHẢI TRUYỀN
+                onClose={() => setIsModalOpen(false)}
+                onAddProduct={(newProduct) => {
+                  // Xử lý thêm sản phẩm ở đây (nếu có)
+                  console.log("Sản phẩm mới:", newProduct);
+                }}
+  />
+)}
 
+            </div>
+            ): null}
           {productsLoading ? (
             <div className={`grid ${viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : ""} gap-6`}>
               {[...Array(6)].map((_, index) => (
@@ -295,7 +321,7 @@ function ProductsPage() {
                   <Link to={`/products/${product.id}`}>
                     <div className="h-48 overflow-hidden">
                       <img
-                        src={product.image_url || "/placeholder.svg?height=400&width=400"}
+                        src={"/"+product.image_url || "/placeholder.svg?height=400&width=400"}
                         alt={product.name}
                         className="w-full h-full object-contain "
                       />
@@ -334,7 +360,7 @@ function ProductsPage() {
                     <div className="w-full md:w-1/3">
                       <Link to={`/products/${product.id}`}>
                         <img
-                          src={product.image_url || "/placeholder.svg?height=400&width=400"}
+                          src={"/"+product.image_url || "/placeholder.svg?height=400&width=400"}
                           alt={product.name}
                           className="w-full h-full object-cover"
                         />

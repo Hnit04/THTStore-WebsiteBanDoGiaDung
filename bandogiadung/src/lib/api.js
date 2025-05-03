@@ -116,7 +116,14 @@ export async function register(userData) {
     method: "POST",
     body: JSON.stringify(userData),
   })
+  return response
+}
 
+export async function createProduct(productData) {
+  const response = await fetchAPI("/users/product", {
+    method: "POST",
+    body: JSON.stringify(productData),
+  })
   return response
 }
 
