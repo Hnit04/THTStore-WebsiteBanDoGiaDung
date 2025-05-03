@@ -1,4 +1,3 @@
-"use client"
 
 import { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
@@ -6,7 +5,8 @@ import { getProductById } from "../lib/api.js"
 import { formatCurrency } from "../lib/utils.js"
 import { useCart } from "../contexts/CartContext.jsx"
 import toast from "react-hot-toast"
-
+import { useAuth } from "../contexts/AuthContext.jsx"
+import  UpdateProductModal from "../components/ui/UpdateProductModal.jsx"
 function ProductDetailPage() {
   const { id } = useParams()
   const [product, setProduct] = useState(null)
@@ -14,6 +14,9 @@ function ProductDetailPage() {
   const [error, setError] = useState(null)
   const [quantity, setQuantity] = useState(1)
   const { addToCart } = useCart()
+  const { user, isAuthenticated } = useAuth()
+  const isAdmin = isAuthenticated && user && user.role === "admin"
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
     async function loadProduct() {
@@ -31,8 +34,8 @@ function ProductDetailPage() {
     
     loadProduct()
   }, [id])
-  
 
+  
   const handleAddToCart = () => {
     addToCart(product, quantity)
     toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`)
@@ -70,7 +73,6 @@ function ProductDetailPage() {
       </div>
     )
   }
-  console.log("Image URL:", product.image_url);
   return (
     <div className="container mx-auto px-4 py-8">
       <Link to="/products" className="flex items-center text-gray-600 mb-6 hover:text-gray-900">
@@ -145,13 +147,30 @@ function ProductDetailPage() {
             </div>
           </div>
 
-          <button
+          {isAdmin ? (
+            <div>
+              <button
+            className="w-full mb-4 bg-red-600 hover:bg-red-700 text-white py-3 rounded-md font-medium" 
+            onClick={() => setIsModalOpen(true)}
+          >
+            Cập nhật sản phẩm
+          </button>
+          <UpdateProductModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            product={product}
+          />
+
+            </div>
+
+          ):(
+            <button
             className="w-full mb-4 bg-red-600 hover:bg-red-700 text-white py-3 rounded-md font-medium"
             onClick={handleAddToCart}
           >
             Thêm vào giỏ hàng
           </button>
-
+          )}
           <div className="space-y-4 border-t pt-6">
             <div className="flex items-center">
               <svg

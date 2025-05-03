@@ -240,3 +240,61 @@ exports.createProduct = async (req, res, next) => {
     res.status(500).json({ success: false, error: "Lỗi server khi tạo sản phẩm" });
   }
 };
+
+exports.updateProduct = async (req, res) => {
+  try {
+    const id  = req.params.id; // Lấy mã sản phẩm từ params
+    console.log("Mã sản phẩm:", id); // Log mã sản phẩm
+    // Kiểm tra trường bắt buộc
+    const requiredFields = ['name', 'price', 'category_id'];
+    for (const field of requiredFields) {
+      if (!req.body[field]) {
+        return res.status(400).json({
+          success: false,
+          error: `Thiếu thông tin bắt buộc (${requiredFields.join(', ')})`,
+        });
+      }
+    }
+
+    // Tìm sản phẩm theo trường id (không phải _id)
+    const product = await Product.findOne({ id: req.params.id });
+    console.log("Sản phẩm tìm thấy:", product); // Log sản phẩm tìm thấy
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        error: "Không tìm thấy sản phẩm để cập nhậ1t",
+      });
+    }
+
+    // Cập nhật sản phẩm
+    Object.assign(product, {
+      id: id,
+      name: req.body.name,
+      price: req.body.price,
+      old_price: req.body.old_price,
+      image_url: req.body.image_url,
+      description: req.body.description,
+      category_id: req.body.category_id,
+      rating: req.body.rating,
+      review_count: req.body.review_count,
+      is_new: req.body.is_new,
+      discount: req.body.discount,
+      stock: req.body.stock,
+    });
+
+    await product.save();
+
+    console.log("✅ Product updated:", product);
+    res.status(200).json({
+      success: true,
+      data: product,
+    });
+
+  } catch (err) {
+    console.error("❌ Lỗi updateProduct:", err);
+    res.status(500).json({
+      success: false,
+      error: "Lỗi server khi cập nhật sản phẩm",
+    });
+  }
+};

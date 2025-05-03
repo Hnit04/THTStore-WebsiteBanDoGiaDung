@@ -85,7 +85,7 @@ function AddProductModal({ isOpen, onClose, onAddProduct }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30">
       <div className="bg-white p-6 rounded shadow-2xl w-full max-w-2xl border border-gray-500">
         <h2 className="text-xl font-bold mb-4">Thêm sản phẩm mới</h2>
         <form onSubmit={handleSubmit} className="space-y-4">

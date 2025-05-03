@@ -127,6 +127,14 @@ export async function createProduct(productData) {
   return response
 }
 
+export async function updateProduct(productData) {
+  const response = await fetchAPI(`/users/updateProduct/${productData.id}`, {
+    method: "PUT",
+    body: JSON.stringify(productData),
+  })
+  return response
+}
+
 export async function logout() {
   await fetchAPI("/auth/logout", {
     method: "POST",
