@@ -7,13 +7,13 @@ const OrderPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchText, setSearchText] = useState("");
-
+  const [searchDate, setSearchDate] = useState("");
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
         const response = await getAllOrders(); // Sử dụng hàm getAllOrders đã import
-        console.log("Orders", response);
+        // console.log("Orders", response);
         // Đã sửa để khớp với cấu trúc dữ liệu backend
         setOrders(response);
         if (response && response.length > 0) {
@@ -27,7 +27,6 @@ const OrderPage = () => {
         setLoading(false);
       }
     };
-
     fetchOrders();
   }, []);
 
@@ -36,21 +35,21 @@ const OrderPage = () => {
   };
 
   // Đã sửa để khớp với cấu trúc dữ liệu backend
-  const filteredOrders = orders.filter(
-    (order) => {
-    return (
-      order.id.toLowerCase().includes(searchText.toLowerCase()) ||  // Search by order ID
-      order.email.toLowerCase().includes(searchText.toLowerCase()) || // Search by email
-      order.status.toLowerCase().includes(searchText.toLowerCase()) // Search by status
-    );
+  const filteredOrders = orders.filter(order => {
+    const phone = order.user_phone || "";
+    const orderDate = new Date(order.created_at).toLocaleDateString("vi-VN");
+  
+    const matchesPhone = phone.includes(searchText);
+    const matchesDate = searchDate
+      ? orderDate.includes(searchDate)
+      : true;
+  
+    return matchesPhone && matchesDate;
   });
+  
+  
 
-  // const filteredOrders = customers.filter(
-  //   (order) =>
-  //     order.id?.toLowerCase().includes(searchText.toLowerCase()) ||
-  //     order.email?.toLowerCase().includes(searchText.toLowerCase()) ||
-  //     order.status?.includes(searchText),
-  // )
+
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -95,6 +94,18 @@ const OrderPage = () => {
         }
     };
 
+    const getPaymentMethodText = (method) => {
+        switch (method?.toLowerCase()) {
+          case "cod":
+            return "Thanh toán khi nhận hàng";
+          case "banking":
+            return "Chuyển khoản ngân hàng";
+          case "momo":
+            return "Thanh toán qua Momo";
+          case "zalopay":
+            return "Thanh toán qua ZaloPay";
+        }
+      };
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
       case "pending":
@@ -144,8 +155,8 @@ const OrderPage = () => {
                 <div>
                   <div className="flex justify-center mb-6">
                     <div className="relative">
-                      <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-bold border-4 border-white shadow-md">
-                        {selectedOrder._id ? selectedOrder._id.substring(0, 8).toUpperCase() : "OR"}
+                      <div className="w-64 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xl font-bold border-4 border-white shadow-md">
+                        {selectedOrder.user_fullName}
                       </div>
                       <div
                         className={`absolute bottom-0 right-0 w-6 h-6 rounded-full ${getStatusColor(
@@ -240,7 +251,7 @@ const OrderPage = () => {
                               <div className="ml-3 flex-grow">
                                 <p className="text-sm font-medium">{item.product_name || "Unknown Product"}</p>
                                 <div className="flex justify-between items-center mt-1">
-                                  <p className="text-xs text-gray-500">Giá bán: {item.product_price || "N/A"}</p>
+                                  <p className="text-xs text-gray-500">Giá bán: {formatCurrency(item.product_price) || "N/A"}</p>
                                   <p className="text-xs font-medium">SL: {item.quantity}</p>
                                 </div>
                               </div>
@@ -269,7 +280,7 @@ const OrderPage = () => {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Tìm kiếm theo email của khách hàng"
+                  placeholder="Tìm kiếm theo số điện thoại của khách hàng"
                   className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
@@ -280,7 +291,25 @@ const OrderPage = () => {
                     className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
                     onClick={() => setSearchText("")}
                   >
-                    ×
+                    
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo ngày đặt hàng của khách hàng"
+                  className="w-full mt-5 pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={searchDate}
+                  onChange={(e) => setSearchDate(e.target.value)}
+                />
+                <SearchIcon className="absolute left-3 top-7.5 h-5 w-5 text-gray-400" />
+                {searchDate && (
+                  <button
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                    onClick={() => setSearchDate("")}
+                  >
+                    
                   </button>
                 )}
               </div>
@@ -296,13 +325,22 @@ const OrderPage = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Mã đơn hàng
+                        Tên khách hàng
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
+                      <th className=" text-center py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Số điện thoại
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Tổng tiền
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Hình thức thanh toán
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ngày đặt hàng
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ngày nhận hàng
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Trạng thái
@@ -319,14 +357,31 @@ const OrderPage = () => {
                             }`}
                         >
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">#{order.id}</div>
+                            <div className="text-sm text-gray-900">{order.user_fullName}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{order.email}</div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {order.user_phone}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">
                               {formatCurrency(order.total_amount)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {getPaymentMethodText(order.payment_method)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {order.created_at ? formatDate(order.created_at) : "N/A"} 
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {order.updated_at ? formatDate(order.updated_at) : "N/A"}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">

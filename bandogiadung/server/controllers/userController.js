@@ -32,15 +32,19 @@ exports.getAllOrders = async (req, res, next) => {
     console.log("Gọi getAllOrders...");
     const orders = await Order.find().lean(); // Use lean() for better performance
 
-    const ordersWithImages = await Promise.all(
+    const ordersWithDetails = await Promise.all(
       orders.map(async (order) => {
+        // Lấy thông tin người dùng từ email
+        const user = await User.findOne({ email: order.email }).lean();
+
+        // Lấy thông tin sản phẩm kèm hình ảnh
         const itemsWithImages = await Promise.all(
           order.items.map(async (item) => {
-            const product = await Product.findOne({ id: item.product_id }).lean(); //  lean() here too
+            const product = await Product.findOne({ id: item.product_id }).lean();
             return {
-              ...item, 
+              ...item,
               image_url: product?.image_url || null,
-              product_name: product?.name || "Unknown Product", // Include product name
+              product_name: product?.name || item.product_name || "Unknown Product",
             };
           })
         );
@@ -48,23 +52,25 @@ exports.getAllOrders = async (req, res, next) => {
         return {
           ...order,
           items: itemsWithImages,
+          user_fullName: user?.fullName || "Unknown User",
+          user_phone: user?.phone || "Unknown Phone",
         };
       })
     );
-    console.log("Danh sách đơn hàng:", ordersWithImages);
 
     res.status(200).json({
       success: true,
-      count: ordersWithImages.length,
-      data: ordersWithImages,
+      count: ordersWithDetails.length,
+      data: ordersWithDetails,
     });
 
-    console.log("Danh sách đơn hàng:", ordersWithImages);
+    console.log("Danh sách đơn hàng:", ordersWithDetails);
   } catch (err) {
-    console.log("Lỗi khi gọi getAllOrders:", err);
+    console.error("Lỗi khi gọi getAllOrders:", err);
     next(err);
   }
 };
+
 
 
 

@@ -15,7 +15,7 @@ const CustomerPage = () => {
       try {
         setLoading(true)
         const response = await getAllUsers()
-        console.log("Customer", response)
+        // console.log("Customer", response)
         // The response appears to be the data array directly
         setCustomers(response)
         if (response && response.length > 0) {
