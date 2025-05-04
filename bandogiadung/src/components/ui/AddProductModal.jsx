@@ -64,7 +64,8 @@ function AddProductModal({ isOpen, onClose, onAddProduct }) {
 
       // Gọi hàm createProduct từ api.js
       const response = await createProduct(productData);
-        if(response.success){
+        if(response){
+          alert("Thêm sản phẩm thành công!!!")
              onAddProduct(response.data); // Gọi callback để thêm sản phẩm vào danh sách
              onClose();
         }else{

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { updateProduct } from "../../lib/api";
 import { useCategories } from "../../hooks/useCategories";
-
 function UpdateProductModal({ product, isOpen, onClose }) {
     const { categories, loading: categoriesLoading } = useCategories();
     const [error, setError] = useState(null);
@@ -97,19 +96,15 @@ function UpdateProductModal({ product, isOpen, onClose }) {
 
             const response = await updateProduct(updatedData);
 
-            if (response.success) {
+            if (response) {
+                alert("Cập nhật sản phẩm thành công!");
                 onClose();
             } else {
-                onClose();
-                window.location.reload();
+                alert("Cập nhật sản phẩm thất bại!");
             }
         } catch (err) {
             onClose();
             window.location.reload();
-        } finally {
-            onClose();
-            window.location.reload();
-            setLoading(false);
         }
     };
 
