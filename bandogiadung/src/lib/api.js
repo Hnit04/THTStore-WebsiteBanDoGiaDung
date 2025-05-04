@@ -1,3 +1,4 @@
+// src/lib/api.js
 const API_URL = "http://localhost:5000/api";
 
 // Hàm helper để gọi API
@@ -23,12 +24,12 @@ async function fetchAPI(endpoint, options = {}) {
     const response = await fetch(url, options);
 
     if (!response.ok) {
-      const data = await response.json().catch(() => ({})); // Xử lý trường hợp không parse được JSON
+      const data = await response.json().catch(() => ({}));
       throw new Error(data.error || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.data || data; // Trả về dữ liệu từ API
+    return data.data || data;
   } catch (error) {
     console.error(`API Error at ${url}:`, error.message);
     throw new Error(`Failed to fetch API at ${url}: ${error.message}`);
@@ -102,9 +103,7 @@ export async function login(email, password) {
     body: JSON.stringify({ email, password }),
   });
 
-  // Lưu token vào localStorage
   localStorage.setItem("token", response.token);
-
   return response;
 }
 
@@ -112,6 +111,14 @@ export async function register(userData) {
   const response = await fetchAPI("/auth/register", {
     method: "POST",
     body: JSON.stringify(userData),
+  });
+  return response;
+}
+
+export async function verifyEmail(email, verificationCode) {
+  const response = await fetchAPI("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ email, verificationCode }),
   });
   return response;
 }
@@ -136,8 +143,6 @@ export async function logout() {
   await fetchAPI("/auth/logout", {
     method: "POST",
   });
-
-  // Xóa token khỏi localStorage
   localStorage.removeItem("token");
 }
 
@@ -147,7 +152,6 @@ export async function getCurrentUser() {
     return response;
   } catch (error) {
     console.error("Failed to fetch current user:", error.message || error);
-    // Nếu không lấy được thông tin user, xóa token
     localStorage.removeItem("token");
     return null;
   }
