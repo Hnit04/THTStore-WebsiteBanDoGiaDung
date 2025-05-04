@@ -78,7 +78,11 @@ export async function createOrder(orderData) {
 
 export async function getAllUsers() {
   const response = await fetchAPI("/users/customer")
-  // console.log("User", response)
+  return response
+}
+
+export async function getAllOrders() {
+  const response = await fetchAPI("/users/orders")
   return response
 }
 
@@ -112,7 +116,22 @@ export async function register(userData) {
     method: "POST",
     body: JSON.stringify(userData),
   })
+  return response
+}
 
+export async function createProduct(productData) {
+  const response = await fetchAPI("/users/product", {
+    method: "POST",
+    body: JSON.stringify(productData),
+  })
+  return response
+}
+
+export async function updateProduct(productData) {
+  const response = await fetchAPI(`/users/updateProduct/${productData.id}`, {
+    method: "PUT",
+    body: JSON.stringify(productData),
+  })
   return response
 }
 

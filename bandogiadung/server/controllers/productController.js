@@ -54,7 +54,7 @@ exports.getProducts = async (req, res) => {
 // @access  Public
 exports.getProduct = async (req, res, next) => {
   try {
-    const product = await Product.findOne({ id: req.params.id }).populate("category");
+    const product = await Product.findOne({ id: req.params.id });
 
     if (!product) {
       return res.status(404).json({
