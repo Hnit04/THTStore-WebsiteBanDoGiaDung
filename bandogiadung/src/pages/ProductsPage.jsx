@@ -20,7 +20,7 @@ function ProductsPage() {
   const { user, isAuthenticated } = useAuth()
   const isAdmin = isAuthenticated && user && user.role === "admin"
   const { toggleFavorite, isFavorite } = useFavorites()
-  const { addToCart } = useCart()
+  const { addToCart, cart } = useCart()
 
   const categoryParam = searchParams.get("category")
   const searchParam = searchParams.get("search")
@@ -139,9 +139,32 @@ function ProductsPage() {
     window.location.href = window.location.pathname
   }
 
-  const handleBuyNow = (product) => {
-    addToCart(product, 1)
-    navigate("/cart")
+  const handleBuyNow = async (product) => {
+    if (!isAuthenticated) {
+      toast.error("Vui lòng đăng nhập để mua hàng")
+      navigate("/login?redirect=" + encodeURIComponent(window.location.pathname))
+      return
+    }
+    try {
+      console.log("Adding product to cart, product ID:", product.id)
+      await addToCart(product, 1)
+
+      // Chờ để đảm bảo cart được cập nhật
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      console.log("Cart after add:", cart.map(item => ({ _id: item._id, productId: item.product?.id })))
+      const isProductInCart = cart.some(item => item.product?.id === product.id)
+      if (!isProductInCart) {
+        throw new Error("Sản phẩm chưa được thêm vào giỏ hàng")
+      }
+
+      const params = new URLSearchParams()
+      params.append("items", product.id)
+      navigate(`/checkout?${params.toString()}`)
+    } catch (error) {
+      console.error("Lỗi khi thêm vào giỏ hàng:", error)
+      toast.error("Đã xảy ra lỗi khi thêm sản phẩm")
+    }
   }
 
   const handleToggleFavorite = (product) => {

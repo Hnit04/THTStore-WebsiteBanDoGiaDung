@@ -1,17 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useCart } from "../contexts/CartContext.jsx";
 import { useAuth } from "../contexts/AuthContext.jsx";
-import { formatCurrency, generateOrderId } from "../lib/utils.js";
+import { formatCurrency } from "../lib/utils.js";
 import { createOrder } from "../lib/api.js";
 import toast from "react-hot-toast";
 
 function CheckoutPage() {
-  const { cart, getCartTotal, clearCart } = useCart();
+  const { cart, removeFromCart } = useCart();
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const selectedItemIds = searchParams.getAll("items");
 
   // Khởi tạo formData với thông tin người dùng từ MongoDB
   const [formData, setFormData] = useState({
@@ -27,8 +29,10 @@ function CheckoutPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Tính toán tổng tiền
-  const subtotal = getCartTotal();
+  // Lọc các sản phẩm được chọn từ giỏ hàng
+  const selectedCart = cart.filter((item) => selectedItemIds.includes(item.product?.id));
+  // Tính toán tổng tiền dựa trên các sản phẩm được chọn
+  const subtotal = selectedCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const shipping = subtotal > 500000 ? 0 : 30000;
   const total = subtotal + shipping;
 
@@ -48,14 +52,14 @@ function CheckoutPage() {
     );
   }
 
-  // Kiểm tra giỏ hàng rỗng
-  if (!Array.isArray(cart) || cart.length === 0) {
+  // Kiểm tra giỏ hàng rỗng hoặc không có sản phẩm được chọn
+  if (!Array.isArray(cart) || cart.length === 0 || selectedCart.length === 0) {
     return (
         <div className="container mx-auto px-4 py-16 text-center">
           <h1 className="text-3xl font-bold mb-6">Thanh Toán</h1>
-          <p className="text-gray-600 mb-8">Giỏ hàng của bạn đang trống. Hãy thêm sản phẩm để tiếp tục thanh toán.</p>
-          <Link to="/products" className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md font-medium">
-            Tiếp tục mua sắm
+          <p className="text-gray-600 mb-8">Không có sản phẩm nào được chọn để thanh toán. Vui lòng quay lại giỏ hàng.</p>
+          <Link to="/cart" className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md font-medium">
+            Quay lại giỏ hàng
           </Link>
         </div>
     );
@@ -89,17 +93,16 @@ function CheckoutPage() {
     try {
       setIsSubmitting(true);
 
-      // Prepare order data
+      // Prepare order data with selected items
       const orderData = {
-        id: generateOrderId(),
         user_id: user.id,
         status: "pending",
         total_amount: total,
         shipping_address: `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.city}`,
         shipping_city: formData.city,
         payment_method: formData.paymentMethod,
-        payment_status: formData.paymentMethod === "cod" ? "pending" : "pending", // Có thể mở rộng cho banking
-        items: cart.map((item) => ({
+        payment_status: formData.paymentMethod === "cod" ? "pending" : "pending",
+        items: selectedCart.map((item) => ({
           product_id: item.product._id || item.product.id,
           product_name: item.product.name,
           product_price: item.product.price,
@@ -110,11 +113,13 @@ function CheckoutPage() {
       // Create order
       await createOrder(orderData);
 
-      // Clear cart
-      await clearCart();
+      // Xóa các sản phẩm được chọn khỏi giỏ hàng
+      for (const item of selectedCart) {
+        await removeFromCart(item._id);
+      }
 
       toast.success("Đặt hàng thành công!");
-      navigate("/order-success", { state: { orderId: orderData.id } });
+      navigate("/"); // Chuyển hướng về trang chủ
     } catch (error) {
       console.error("Lỗi khi tạo đơn hàng:", error.message);
       toast.error("Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại sau.");
@@ -282,7 +287,7 @@ function CheckoutPage() {
               <h2 className="text-xl font-bold mb-4">Đơn hàng của bạn</h2>
 
               <div className="divide-y">
-                {cart.map((item) => (
+                {selectedCart.map((item) => (
                     <div key={item._id || item.id} className="py-4 flex">
                       <div className="w-20 h-20 flex-shrink-0">
                         <img
