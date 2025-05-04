@@ -4,8 +4,20 @@ import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useFavorites } from "../contexts/FavoritesContext.jsx"
 import { useCart } from "../contexts/CartContext.jsx"
+import { useAuth } from "../contexts/AuthContext.jsx"
 import { formatCurrency } from "../lib/utils.js"
-import { Heart, ShoppingCart, Trash2, Grid3X3, List, Share2, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react"
+import {
+    Heart,
+    ShoppingCart,
+    Trash2,
+    Grid3X3,
+    List,
+    Share2,
+    ArrowLeft,
+    ChevronDown,
+    ChevronUp,
+    LogIn,
+} from "lucide-react"
 import toast from "react-hot-toast"
 import EmptyState from "../components/ui/EmptyState.jsx"
 
@@ -13,12 +25,21 @@ function FavoritesPage() {
     const navigate = useNavigate()
     const { favorites, toggleFavorite, clearFavorites } = useFavorites()
     const { addToCart } = useCart()
+    const { isAuthenticated } = useAuth()
     const [viewMode, setViewMode] = useState("grid")
     const [sortBy, setSortBy] = useState("default")
     const [showSortOptions, setShowSortOptions] = useState(false)
     const [sortedFavorites, setSortedFavorites] = useState([])
     const [selectedItems, setSelectedItems] = useState([])
     const [isSelectMode, setIsSelectMode] = useState(false)
+
+    // Chuyển hướng người dùng đến trang đăng nhập nếu chưa đăng nhập
+    useEffect(() => {
+        if (!isAuthenticated) {
+            toast.error("Vui lòng đăng nhập để xem danh sách yêu thích")
+            navigate("/login?redirect=/favorites")
+        }
+    }, [isAuthenticated, navigate])
 
     useEffect(() => {
         const sorted = [...favorites]
@@ -116,6 +137,23 @@ function FavoritesPage() {
         { value: "name-asc", label: "Tên: A-Z" },
         { value: "name-desc", label: "Tên: Z-A" },
     ]
+
+    // Nếu chưa đăng nhập, hiển thị màn hình đăng nhập
+    if (!isAuthenticated) {
+        return (
+            <div className="container mx-auto px-4 py-16 text-center">
+                <div className="bg-white rounded-xl shadow-lg p-8 max-w-md mx-auto">
+                    <EmptyState
+                        title="Vui lòng đăng nhập"
+                        description="Bạn cần đăng nhập để xem và quản lý danh sách yêu thích của mình."
+                        icon={<LogIn className="w-20 h-20 text-gray-300" />}
+                        actionText="Đăng nhập ngay"
+                        actionHref="/login?redirect=/favorites"
+                    />
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="container mx-auto px-4 py-12 font-sans">

@@ -1,67 +1,70 @@
-import { useState, useEffect, useCallback } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { useProducts } from "../hooks/useProducts.js";
-import { useCategories } from "../hooks/useCategories.js";
-import { formatCurrency } from "../lib/utils.js";
-import { Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext.jsx";
-import AddProductModal from "../components/ui/AddProductModal.jsx";
-import { Heart, ShoppingCart } from "lucide-react";
-import { useFavorites } from "../contexts/FavoritesContext.jsx";
-import { useCart } from "../contexts/CartContext.jsx";
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import { useSearchParams, useNavigate } from "react-router-dom"
+import { useProducts } from "../hooks/useProducts.js"
+import { useCategories } from "../hooks/useCategories.js"
+import { formatCurrency } from "../lib/utils.js"
+import { Link } from "react-router-dom"
+import { useAuth } from "../contexts/AuthContext.jsx"
+import AddProductModal from "../components/ui/AddProductModal.jsx"
+import { Heart, ShoppingCart } from "lucide-react"
+import { useFavorites } from "../contexts/FavoritesContext.jsx"
+import { useCart } from "../contexts/CartContext.jsx"
+import toast from "react-hot-toast"
 
 function ProductsPage() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const { user, isAuthenticated } = useAuth();
-  const isAdmin = isAuthenticated && user && user.role === "admin";
-  const { toggleFavorite, isFavorite } = useFavorites();
-  const { addToCart } = useCart();
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const { user, isAuthenticated } = useAuth()
+  const isAdmin = isAuthenticated && user && user.role === "admin"
+  const { toggleFavorite, isFavorite } = useFavorites()
+  const { addToCart } = useCart()
 
-  const categoryParam = searchParams.get("category");
-  const searchParam = searchParams.get("search");
-  const minPriceParam = searchParams.get("minPrice");
-  const maxPriceParam = searchParams.get("maxPrice");
+  const categoryParam = searchParams.get("category")
+  const searchParam = searchParams.get("search")
+  const minPriceParam = searchParams.get("minPrice")
+  const maxPriceParam = searchParams.get("maxPrice")
 
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const [filters, setFilters] = useState({
     category: categoryParam || "",
     minPrice: minPriceParam ? Number.parseInt(minPriceParam) : 0,
     maxPrice: maxPriceParam ? Number.parseInt(maxPriceParam) : 5000000,
     search: searchParam || "",
-  });
+  })
 
   const [priceRange, setPriceRange] = useState([
     minPriceParam ? Number.parseInt(minPriceParam) : 0,
     maxPriceParam ? Number.parseInt(maxPriceParam) : 5000000,
-  ]);
+  ])
 
-  const { products, loading: productsLoading, refetch } = useProducts(filters);
-  const { categories, loading: categoriesLoading } = useCategories();
-  const [viewMode, setViewMode] = useState("grid");
+  const { products, loading: productsLoading, refetch } = useProducts(filters)
+  const { categories, loading: categoriesLoading } = useCategories()
+  const [viewMode, setViewMode] = useState("grid")
 
   const updateFiltersAndURL = useCallback(
       (newFilters) => {
-        setFilters(newFilters);
+        setFilters(newFilters)
 
-        const params = new URLSearchParams();
-        if (newFilters.category) params.set("category", newFilters.category);
-        if (newFilters.search) params.set("search", newFilters.search);
-        if (newFilters.minPrice > 0) params.set("minPrice", newFilters.minPrice.toString());
-        if (newFilters.maxPrice < 5000000) params.set("maxPrice", newFilters.maxPrice.toString());
+        const params = new URLSearchParams()
+        if (newFilters.category) params.set("category", newFilters.category)
+        if (newFilters.search) params.set("search", newFilters.search)
+        if (newFilters.minPrice > 0) params.set("minPrice", newFilters.minPrice.toString())
+        if (newFilters.maxPrice < 5000000) params.set("maxPrice", newFilters.maxPrice.toString())
 
-        navigate(`?${params.toString()}`, { replace: true });
+        navigate(`?${params.toString()}`, { replace: true })
 
-        setRefreshTrigger((prev) => prev + 1);
+        setRefreshTrigger((prev) => prev + 1)
 
         if (typeof refetch === "function") {
-          refetch(newFilters);
+          refetch(newFilters)
         }
       },
-      [navigate, refetch]
-  );
+      [navigate, refetch],
+  )
 
   useEffect(() => {
     const newFilters = {
@@ -69,7 +72,7 @@ function ProductsPage() {
       minPrice: minPriceParam ? Number.parseInt(minPriceParam) : 0,
       maxPrice: maxPriceParam ? Number.parseInt(maxPriceParam) : 5000000,
       search: searchParam || "",
-    };
+    }
 
     if (
         newFilters.category !== filters.category ||
@@ -77,51 +80,51 @@ function ProductsPage() {
         newFilters.maxPrice !== filters.maxPrice ||
         newFilters.search !== filters.search
     ) {
-      setFilters(newFilters);
-      setPriceRange([newFilters.minPrice, newFilters.maxPrice]);
+      setFilters(newFilters)
+      setPriceRange([newFilters.minPrice, newFilters.maxPrice])
 
       if (typeof refetch === "function") {
-        refetch(newFilters);
+        refetch(newFilters)
       }
     }
-  }, [categoryParam, searchParam, minPriceParam, maxPriceParam, filters, refetch]);
+  }, [categoryParam, searchParam, minPriceParam, maxPriceParam, filters, refetch])
 
   useEffect(() => {
     if (refreshTrigger > 0 && typeof refetch === "function") {
-      refetch(filters);
+      refetch(filters)
     }
-  }, [refreshTrigger, filters, refetch]);
+  }, [refreshTrigger, filters, refetch])
 
   const handleCategoryChange = (categoryId) => {
     const newFilters = {
       ...filters,
       category: filters.category === categoryId ? "" : categoryId,
-    };
-    updateFiltersAndURL(newFilters);
-  };
+    }
+    updateFiltersAndURL(newFilters)
+  }
 
   const handlePriceChange = () => {
     const newFilters = {
       ...filters,
       minPrice: priceRange[0],
       maxPrice: priceRange[1],
-    };
-    updateFiltersAndURL(newFilters);
-    const params = new URLSearchParams();
-    if (filters.category) params.set("category", filters.category);
-    if (filters.search) params.set("search", filters.search);
-    if (priceRange[0] > 0) params.set("minPrice", priceRange[0].toString());
-    if (priceRange[1] < 5000000) params.set("maxPrice", priceRange[1].toString());
-    window.location.href = `?${params.toString()}`;
-  };
+    }
+    updateFiltersAndURL(newFilters)
+    const params = new URLSearchParams()
+    if (filters.category) params.set("category", filters.category)
+    if (filters.search) params.set("search", filters.search)
+    if (priceRange[0] > 0) params.set("minPrice", priceRange[0].toString())
+    if (priceRange[1] < 5000000) params.set("maxPrice", priceRange[1].toString())
+    window.location.href = `?${params.toString()}`
+  }
 
   const handleSearchChange = (e) => {
     const newFilters = {
       ...filters,
       search: e.target.value,
-    };
-    updateFiltersAndURL(newFilters);
-  };
+    }
+    updateFiltersAndURL(newFilters)
+  }
 
   const handleResetFilters = () => {
     const newFilters = {
@@ -129,17 +132,26 @@ function ProductsPage() {
       minPrice: 0,
       maxPrice: 5000000,
       search: "",
-    };
-    setPriceRange([0, 5000000]);
-    setFilters(newFilters);
-    navigate("", { replace: true });
-    window.location.href = window.location.pathname;
-  };
+    }
+    setPriceRange([0, 5000000])
+    setFilters(newFilters)
+    navigate("", { replace: true })
+    window.location.href = window.location.pathname
+  }
 
   const handleBuyNow = (product) => {
-    addToCart(product, 1);
-    navigate("/cart");
-  };
+    addToCart(product, 1)
+    navigate("/cart")
+  }
+
+  const handleToggleFavorite = (product) => {
+    if (!isAuthenticated) {
+      toast.error("Vui lòng đăng nhập để thêm sản phẩm vào danh sách yêu thích")
+      navigate("/login?redirect=" + encodeURIComponent(window.location.pathname))
+      return
+    }
+    toggleFavorite(product)
+  }
 
   return (
       <div className="container mx-auto px-4 py-12 font-sans">
@@ -177,7 +189,9 @@ function ProductsPage() {
                               onChange={() => handleCategoryChange(category.id)}
                               className="mr-2 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
                           />
-                          <label htmlFor={`category-${category.id}`} className="text-gray-600">{category.name}</label>
+                          <label htmlFor={`category-${category.id}`} className="text-gray-600">
+                            {category.name}
+                          </label>
                         </div>
                     ))}
                   </div>
@@ -267,7 +281,7 @@ function ProductsPage() {
                           isOpen={isModalOpen}
                           onClose={() => setIsModalOpen(false)}
                           onAddProduct={(newProduct) => {
-                            console.log("Sản phẩm mới:", newProduct);
+                            console.log("Sản phẩm mới:", newProduct)
                           }}
                       />
                   )}
@@ -309,7 +323,7 @@ function ProductsPage() {
                             </div>
                           </Link>
                           <button
-                              onClick={() => toggleFavorite(product)}
+                              onClick={() => handleToggleFavorite(product)}
                               className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
                           >
                             <Heart
@@ -350,7 +364,7 @@ function ProductsPage() {
                           </div>
                         </div>
                       </div>
-                    ))}
+                  ))}
                 </div>
             ) : (
                 <div className="space-y-6">
@@ -369,7 +383,7 @@ function ProductsPage() {
                               />
                             </Link>
                             <button
-                                onClick={() => toggleFavorite(product)}
+                                onClick={() => handleToggleFavorite(product)}
                                 className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
                             >
                               <Heart
@@ -420,7 +434,7 @@ function ProductsPage() {
           </main>
         </div>
       </div>
-);
+  )
 }
 
-export default ProductsPage;
+export default ProductsPage

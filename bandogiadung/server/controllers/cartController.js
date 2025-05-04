@@ -7,9 +7,9 @@ const getCart = async (req, res, next) => {
   try {
     const cart = await Cart.findOne({ user: req.user.id }).populate('items.product');
     if (!cart) {
-      return res.json({ success: true, data: { user: req.user.id, items: [] } });
+      return res.json({ success: true, data: [] });
     }
-    res.json({ success: true, data: cart });
+    res.json({ success: true, data: cart.items || [] });
   } catch (error) {
     next(error);
   }
@@ -23,12 +23,12 @@ const addToCart = async (req, res, next) => {
     // Kiểm tra sản phẩm có tồn tại không
     const product = await Product.findById(productId);
     if (!product) {
-      return res.status(404).json({ success: false, error: 'Product not found' });
+      return res.status(404).json({ success: false, error: 'Sản phẩm không tồn tại' });
     }
 
     // Kiểm tra số lượng tồn kho
     if (quantity > product.stock) {
-      return res.status(400).json({ success: false, error: 'Not enough stock' });
+      return res.status(400).json({ success: false, error: 'Không đủ hàng tồn kho' });
     }
 
     // Tìm giỏ hàng của người dùng
@@ -47,7 +47,7 @@ const addToCart = async (req, res, next) => {
         // Nếu sản phẩm đã có, tăng số lượng
         cart.items[itemIndex].quantity += quantity;
         if (cart.items[itemIndex].quantity > product.stock) {
-          return res.status(400).json({ success: false, error: 'Not enough stock' });
+          return res.status(400).json({ success: false, error: 'Không đủ hàng tồn kho' });
         }
       } else {
         // Nếu sản phẩm chưa có, thêm mới vào items
@@ -58,7 +58,7 @@ const addToCart = async (req, res, next) => {
 
     // Populate để trả về thông tin sản phẩm
     await cart.populate('items.product');
-    res.status(201).json({ success: true, data: cart });
+    res.status(201).json({ success: true, data: cart.items || [] });
   } catch (error) {
     next(error);
   }
@@ -73,19 +73,19 @@ const updateCartItem = async (req, res, next) => {
     // Tìm giỏ hàng của người dùng
     const cart = await Cart.findOne({ user: req.user.id });
     if (!cart) {
-      return res.status(404).json({ success: false, error: 'Cart not found' });
+      return res.status(404).json({ success: false, error: 'Không tìm thấy giỏ hàng' });
     }
 
     // Tìm item trong giỏ hàng
     const itemIndex = cart.items.findIndex(item => item._id.toString() === itemId);
     if (itemIndex === -1) {
-      return res.status(404).json({ success: false, error: 'Item not found in cart' });
+      return res.status(404).json({ success: false, error: 'Không tìm thấy sản phẩm trong giỏ hàng' });
     }
 
     // Kiểm tra số lượng tồn kho
     const product = await Product.findById(cart.items[itemIndex].product);
     if (quantity > product.stock) {
-      return res.status(400).json({ success: false, error: 'Not enough stock' });
+      return res.status(400).json({ success: false, error: 'Không đủ hàng tồn kho' });
     }
 
     // Cập nhật số lượng
@@ -97,7 +97,7 @@ const updateCartItem = async (req, res, next) => {
 
     await cart.save();
     await cart.populate('items.product');
-    res.json({ success: true, data: cart });
+    res.json({ success: true, data: cart.items || [] });
   } catch (error) {
     next(error);
   }
@@ -111,19 +111,19 @@ const removeFromCart = async (req, res, next) => {
     // Tìm giỏ hàng của người dùng
     const cart = await Cart.findOne({ user: req.user.id });
     if (!cart) {
-      return res.status(404).json({ success: false, error: 'Cart not found' });
+      return res.status(404).json({ success: false, error: 'Không tìm thấy giỏ hàng' });
     }
 
     // Tìm và xóa item
     const itemIndex = cart.items.findIndex(item => item._id.toString() === itemId);
     if (itemIndex === -1) {
-      return res.status(404).json({ success: false, error: 'Item not found in cart' });
+      return res.status(404).json({ success: false, error: 'Không tìm thấy sản phẩm trong giỏ hàng' });
     }
 
     cart.items.splice(itemIndex, 1);
     await cart.save();
     await cart.populate('items.product');
-    res.json({ success: true, data: cart });
+    res.json({ success: true, data: cart.items || [] });
   } catch (error) {
     next(error);
   }
