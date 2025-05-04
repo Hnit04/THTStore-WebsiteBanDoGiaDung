@@ -15,6 +15,10 @@ function CheckoutPage() {
   const [searchParams] = useSearchParams();
   const selectedItemIds = searchParams.getAll("items");
 
+  // Debug logs
+  console.log("Selected Item IDs from URL:", selectedItemIds);
+  console.log("Cart:", cart);
+
   // Khởi tạo formData với thông tin người dùng từ MongoDB
   const [formData, setFormData] = useState({
     fullName: user?.fullName || "",
@@ -29,8 +33,10 @@ function CheckoutPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Lọc các sản phẩm được chọn từ giỏ hàng
-  const selectedCart = cart.filter((item) => selectedItemIds.includes(item.product?.id));
+  // Lọc các sản phẩm được chọn từ giỏ hàng dựa trên item._id
+  const selectedCart = cart.filter((item) => selectedItemIds.includes(item._id || item.id));
+  console.log("Selected Cart:", selectedCart);
+
   // Tính toán tổng tiền dựa trên các sản phẩm được chọn
   const subtotal = selectedCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const shipping = subtotal > 500000 ? 0 : 30000;

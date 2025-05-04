@@ -1,64 +1,69 @@
-// src/pages/RegisterPage.jsx
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { useAuth } from "../contexts/AuthContext.jsx"
-import toast from "react-hot-toast"
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext.jsx";
+import toast from "react-hot-toast";
 
 function RegisterPage() {
-  const [fullName, setFullName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showVerification, setShowVerification] = useState(false)
-  const [verificationCode, setVerificationCode] = useState("")
-  const { register, verifyEmail, error } = useAuth()
-  const navigate = useNavigate()
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const { register, verifyEmail, error } = useAuth();
+  const navigate = useNavigate();
 
   const handleRegister = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
+    console.log("handleRegister called", { fullName, email });
 
     if (!fullName || !email || !password || !confirmPassword) {
-      toast.error("Vui lòng nhập đầy đủ thông tin")
-      return
+      toast.error("Vui lòng nhập đầy đủ thông tin");
+      return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Mật khẩu xác nhận không khớp")
-      return
+      toast.error("Mật khẩu xác nhận không khớp");
+      return;
     }
 
     try {
-      setIsSubmitting(true)
-      await register(email, password, { full_name: fullName })
-      setShowVerification(true)
+      setIsSubmitting(true);
+      const response = await register(email, password, { full_name: fullName });
+      console.log("Registration successful:", response);
+      setShowVerification(true);
     } catch (err) {
-      toast.error(err.message || "Đã xảy ra lỗi, vui lòng thử lại")
+      console.error("Registration failed:", err);
+      toast.error(err.message || "Đã xảy ra lỗi, vui lòng thử lại");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleVerifyEmail = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
+    console.log("handleVerifyEmail called", { email, verificationCode });
 
     if (!verificationCode) {
-      toast.error("Vui lòng nhập mã xác nhận")
-      return
+      toast.error("Vui lòng nhập mã xác nhận");
+      return;
     }
 
     try {
-      setIsSubmitting(true)
-      await verifyEmail(email, verificationCode)
-      navigate("/login")
+      setIsSubmitting(true);
+      const response = await verifyEmail(email, verificationCode);
+      console.log("Email verification successful:", response);
+      navigate("/login");
     } catch (err) {
-      toast.error(err.message || "Xác nhận email thất bại")
+      console.error("Email verification failed:", err);
+      toast.error(err.message || "Xác nhận email thất bại");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
       <div className="container mx-auto px-4 py-12">
@@ -183,7 +188,7 @@ function RegisterPage() {
           </div>
         </div>
       </div>
-  )
+  );
 }
 
-export default RegisterPage
+export default RegisterPage;
