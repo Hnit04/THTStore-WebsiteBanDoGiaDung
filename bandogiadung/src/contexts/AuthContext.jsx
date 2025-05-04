@@ -1,7 +1,8 @@
+// src/contexts/AuthContext.jsx
 "use client"
 
 import { createContext, useState, useContext, useEffect } from "react"
-import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser } from "../lib/api.js"
+import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser, verifyEmail as apiVerifyEmail } from "../lib/api.js"
 import toast from "react-hot-toast"
 
 const AuthContext = createContext()
@@ -12,10 +13,8 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    // Kiểm tra trạng thái đăng nhập khi tải trang
     const checkAuthStatus = async () => {
       try {
-        // Nếu có token trong localStorage, lấy thông tin user
         if (localStorage.getItem("token")) {
           const userData = await getCurrentUser()
           setUser(userData)
@@ -31,7 +30,6 @@ export function AuthProvider({ children }) {
     checkAuthStatus()
   }, [])
 
-  // Đăng nhập
   const login = async (email, password) => {
     try {
       setLoading(true)
@@ -50,7 +48,6 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // Đăng ký
   const register = async (email, password, metadata = {}) => {
     try {
       setLoading(true)
@@ -64,7 +61,7 @@ export function AuthProvider({ children }) {
 
       const data = await apiRegister(userData)
 
-      toast.success("Đăng ký thành công! Vui lòng đăng nhập.")
+      toast.success("Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.")
       return data
     } catch (err) {
       setError(err.message || "Đăng ký thất bại")
@@ -75,7 +72,29 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // Đăng xuất
+  const verifyEmail = async (email, verificationCode) => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      console.log(`[Frontend] Verifying email: ${email} with code: ${verificationCode}`); // Log email và mã từ frontend
+
+      const data = await apiVerifyEmail(email, verificationCode)
+
+      console.log(`[Frontend] Verification successful for ${email}`);
+
+      toast.success("Email đã được xác nhận thành công!")
+      return data
+    } catch (err) {
+      console.error(`[Frontend] Verification failed for ${email}:`, err.message);
+      setError(err.message || "Xác nhận email thất bại")
+      toast.error(err.message || "Xác nhận email thất bại")
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const logout = async () => {
     try {
       setLoading(true)
@@ -97,6 +116,7 @@ export function AuthProvider({ children }) {
     error,
     login,
     register,
+    verifyEmail,
     logout,
     isAuthenticated: !!user,
   }
