@@ -25,8 +25,8 @@ function Contact() {
                         Trần Công Tính
                     </h2>
                     <p className="text-gray-500 mb-1">Mã NV: 22716181</p>
-                    <p className="text-gray-500 mb-1">Email: tinh.trancon@example.com</p>
-                    <p className="text-gray-500">Điện thoại: 091xxxxxxx</p>
+                    <p className="text-gray-500 mb-1">Email: trancongtinh20042004@gmail.com</p>
+                    <p className="text-gray-500">Điện thoại: 0326829327</p>
                 </div>
 
                 <div className="employee-card bg-white p-6 rounded-md border border-gray-200 hover:shadow-lg transition duration-300">
