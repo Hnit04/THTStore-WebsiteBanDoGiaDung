@@ -153,17 +153,20 @@ function ProductsPage() {
       await new Promise(resolve => setTimeout(resolve, 500))
 
       console.log("Cart after add:", cart.map(item => ({ _id: item._id, productId: item.product?.id })))
-      const isProductInCart = cart.some(item => item.product?.id === product.id)
-      if (!isProductInCart) {
+
+      // Tìm mục giỏ hàng vừa thêm vào
+      const cartItem = cart.find(item => item.product?.id === product.id)
+      if (!cartItem) {
         throw new Error("Sản phẩm chưa được thêm vào giỏ hàng")
       }
 
       const params = new URLSearchParams()
-      params.append("items", product.id)
+      params.append("items", cartItem._id) // Sử dụng item._id thay vì product.id
+      console.log("Navigating to checkout with cart item ID:", cartItem._id)
       navigate(`/checkout?${params.toString()}`)
     } catch (error) {
-      console.error("Lỗi khi thêm vào giỏ hàng:", error)
-      toast.error("Đã xảy ra lỗi khi thêm sản phẩm")
+      console.error("Lỗi khi mua ngay:", error)
+      toast.error("Đã xảy ra lỗi khi mua ngay. Vui lòng thử lại.")
     }
   }
 
