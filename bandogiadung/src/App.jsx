@@ -18,6 +18,7 @@ import ProductAdminPage from "./pages/ProductAdminPage.jsx"
 import CustomerPage from "./pages/CustomesPage.jsx"
 import OrderPage from "./pages/OrderPage.jsx"
 import FavoritesPage from "./pages/FavoritesPage.jsx"
+import MyOrderPage from "./pages/MyOrderPage.jsx"
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           <Route path="products/:id" element={<ProductDetailPage />} />
           <Route path="cart" element={<CartPage />} />
           <Route path="favorites" element={<FavoritesPage />} />
+          <Route path="orders" element={<MyOrderPage />} />
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
           <Route path="about" element={<AboutPage />} />

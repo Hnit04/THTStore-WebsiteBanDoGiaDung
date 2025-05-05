@@ -14,15 +14,15 @@ export function AuthProvider({ children }) {
       try {
         const token = localStorage.getItem("token");
         if (token) {
-          console.log("Checking auth status with token:", token);
+          // console.log("Checking auth status with token:", token);
           const userData = await getCurrentUser();
-          console.log("User data fetched:", userData);
+          // console.log("User data fetched:", userData);
           setUser((prev) => {
             if (JSON.stringify(prev) !== JSON.stringify(userData)) {
-              console.log("Updating user:", userData);
+              // console.log("Updating user:", userData);
               return userData;
             }
-            console.log("No user update needed");
+            // console.log("No user update needed");
             return prev;
           });
         }
@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
     try {
       setLoading(true);
       setError(null);
-      console.log("Attempting login for:", email);
+      // console.log("Attempting login for:", email);
       const data = await apiLogin(email, password);
       setUser((prev) => {
         if (JSON.stringify(prev) !== JSON.stringify(data.user)) {
