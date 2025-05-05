@@ -232,32 +232,32 @@ const OrderPage = () => {
 
                       <div className="mt-2">
                         <h4 className="font-medium text-gray-700 mb-2">Sản phẩm trong đơn hàng</h4>
-                        <div className="space-y-3">
-                          {selectedOrder.items.map((item, index) => (
-                            <div key={index} className="flex items-center p-2 border border-gray-100 rounded-lg">
-                              <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
-                                {item.image_url ? (
-                                  <img
-                                    src={"/" + item.image_url || "/placeholder.svg"}
-                                    alt={item.product_name || "Product"}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                    <ShoppingBagIcon className="w-6 h-6" />
-                                  </div>
-                                )}
+                        <div className="space-y-3 max-h-80 overflow-y-auto">
+                      {selectedOrder.items.map((item, index) => (
+                        <div key={index} className="flex items-center p-2 border border-gray-100 rounded-lg">
+                          <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+                            {item.image_url ? (
+                              <img
+                                src={"/" + item.image_url || "/placeholder.svg"}
+                                alt={item.product_name || "Product"}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                <ShoppingBagIcon className="w-6 h-6" />
                               </div>
-                              <div className="ml-3 flex-grow">
-                                <p className="text-sm font-medium">{item.product_name || "Unknown Product"}</p>
-                                <div className="flex justify-between items-center mt-1">
-                                  <p className="text-xs text-gray-500">Giá bán: {formatCurrency(item.product_price) || "N/A"}</p>
-                                  <p className="text-xs font-medium">SL: {item.quantity}</p>
-                                </div>
-                              </div>
+                            )}
+                          </div>
+                          <div className="ml-3 flex-grow">
+                            <p className="text-sm font-medium">{item.product_name || "Unknown Product"}</p>
+                            <div className="flex justify-between items-center mt-1">
+                              <p className="text-xs text-gray-500">Giá bán: {formatCurrency(item.product_price) || "N/A"}</p>
+                              <p className="text-xs font-medium">SL: {item.quantity}</p>
                             </div>
-                          ))}
+                          </div>
                         </div>
+                      ))}
+                    </div>
                       </div>
                     </div>
                   </div>
@@ -321,7 +321,8 @@ const OrderPage = () => {
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
                 </div>
               ) : (
-                <table className="min-w-full divide-y divide-gray-200">
+                <div className="overflow-x-auto max-h-160">
+                  <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -353,8 +354,14 @@ const OrderPage = () => {
                         <tr
                           key={order._id}
                           onClick={() => handleRowClick(order)}
-                          className={`hover:bg-gray-50 cursor-pointer ${selectedOrder.id === order.id ? "bg-blue-50" : ""
-                            }`}
+                          className={`cursor-pointer 
+                            ${selectedOrder?.id === order.id ? "bg-blue-50" : ""}
+                            ${order.status?.toLowerCase() === "pending" &&
+                            (new Date() - new Date(order.created_at)) / (1000 * 60 * 60 * 24) > 7
+                              ? "bg-red-100 text-red-600"
+                              : ""}
+                            hover:bg-gray-50
+                          `}
                         >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{order.user_fullName}</div>
@@ -381,7 +388,7 @@ const OrderPage = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">
-                              {order.updated_at ? formatDate(order.updated_at) : "N/A"}
+                              {order.updated_at ? formatDate(order.updated_at) : "Chưa nhận hàng"}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -402,6 +409,7 @@ const OrderPage = () => {
                     )}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
 

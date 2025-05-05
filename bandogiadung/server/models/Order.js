@@ -50,7 +50,7 @@ const OrderSchema = new mongoose.Schema({
   },
   updated_at: {
     type: Date,
-    default: () => new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // cộng 5 ngày
+    default: null,
   },
   items: [
     {

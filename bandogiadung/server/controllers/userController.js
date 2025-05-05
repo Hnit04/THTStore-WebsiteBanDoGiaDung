@@ -61,9 +61,14 @@ exports.getAllOrders = async (req, res, next) => {
     );
 
     ordersWithDetails.sort((a, b) => {
-      const aStatusIndex= statusOrder.indexOf(a.status);
+      const aStatusIndex = statusOrder.indexOf(a.status);
       const bStatusIndex = statusOrder.indexOf(b.status);
-      return aStatusIndex - bStatusIndex; // Sắp xếp theo thứ tự status
+    
+      if (aStatusIndex !== bStatusIndex) {
+        return aStatusIndex - bStatusIndex; // Ưu tiên status
+      } else {
+        return new Date(a.created_at) - new Date(b.created_at); // Ưu tiên ngày đặt sớm hơn
+      }
     });
     res.status(200).json({
       success: true,
