@@ -2,10 +2,8 @@
 const API_URL = "http://localhost:5000/api";
 
 // Hàm helper để gọi API
-async function fetchAPI(endpoint, options = {}) {
+export async function fetchAPI(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
-
-  // Thêm token vào header nếu đã đăng nhập
   const token = localStorage.getItem("token");
   if (token) {
     options.headers = {
@@ -13,29 +11,27 @@ async function fetchAPI(endpoint, options = {}) {
       Authorization: `Bearer ${token}`,
     };
   }
-
-  // Mặc định headers
   options.headers = {
     "Content-Type": "application/json",
     ...options.headers,
   };
-
   try {
+    console.log('Gọi API:', url, 'với options:', options);
     const response = await fetch(url, options);
-
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      const error = new Error(data.error || `HTTP error! status: ${response.status}`);
+      error.status = response.status;
+      throw error;
     }
-
     const data = await response.json();
+    console.log('Response từ API:', data);
     return data.data || data;
   } catch (error) {
-    console.error(`API Error at ${url}:`, error.message);
-    throw new Error(`Failed to fetch API at ${url}: ${error.message}`);
+    console.error(`API Error tại ${url}:`, error.message, 'Status:', error.status);
+    throw error;
   }
 }
-
 // Sản phẩm
 export async function getProducts(options = {}) {
   const queryParams = new URLSearchParams();

@@ -19,6 +19,7 @@ import CustomerPage from "./pages/CustomesPage.jsx"
 import OrderPage from "./pages/OrderPage.jsx"
 import FavoritesPage from "./pages/FavoritesPage.jsx"
 import MyOrderPage from "./pages/MyOrderPage.jsx"
+import StatisticsPage from "./pages/StatisticsPage.jsx"
 
 function App() {
   return (
@@ -41,7 +42,7 @@ function App() {
           <Route path="admin/products" element={<ProductAdminPage />} />
           <Route path="admin/customers" element={<CustomerPage />} />
           <Route path="admin/orders" element={<OrderPage />} />
-
+          <Route path="admin/statistics" element={<StatisticsPage/>} />
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="profile" element={<ProfilePage />} />

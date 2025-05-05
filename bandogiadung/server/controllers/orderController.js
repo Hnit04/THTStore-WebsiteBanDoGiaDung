@@ -1,21 +1,68 @@
-const Order = require("../models/Order")
+// controllers/orderController.js
+const Order = require('../models/Order');
 
+// @desc    Get all orders
+// @route   GET /api/orders/orderCustomer
+// @access  Public (tạm thời bỏ kiểm tra admin)
+exports.getAllOrders = async (req, res, next) => {
+  try {
+    console.log('Gọi getAllOrders với query:', req.query);
+    const { startDate, endDate } = req.query;
+    const query = {};
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start) || isNaN(end)) {
+        console.error('Invalid date format:', { startDate, endDate });
+        return res.status(400).json({ success: false, error: 'Invalid date format' });
+      }
+      query.created_at = { $gte: start, $lte: end };
+    }
+
+    console.log('MongoDB Query:', query);
+    const orders = await Order.find(query).sort({ created_at: -1 });
+
+    console.log('Danh sách đơn hàng:', orders);
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      data: orders,
+    });
+  } catch (err) {
+    console.error('Lỗi khi gọi getAllOrders:', err);
+    next(err);
+  }
+};
 // @desc    Get orders of current user
 // @route   GET /api/orders
 // @access  Private
 exports.getUserOrders = async (req, res, next) => {
   try {
-    const orders = await Order.find({ user: req.user.id }).sort({ createdAt: -1 })
+    const { startDate, endDate } = req.query;
+    const query = { user: req.user.id };
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start) || isNaN(end)) {
+        return res.status(400).json({ success: false, error: 'Invalid date format' });
+      }
+      query.created_at = { $gte: start, $lte: end };
+    }
+
+    const orders = await Order.find(query).sort({ created_at: -1 });
 
     res.status(200).json({
       success: true,
       count: orders.length,
       data: orders,
-    })
+    });
   } catch (err) {
-    next(err)
+    console.error('Error in getUserOrders:', err);
+    next(err);
   }
-}
+};
 
 // @desc    Get order by ID
 // @route   GET /api/orders/:id
@@ -137,23 +184,5 @@ exports.cancelOrder = async (req, res, next) => {
   }
 }
 
-// @desc    Get all orders
-// @route   GET /api/admin/orders
-// @access  Private (Admin only)
-exports.getAllOrders = async (req, res, next) => {
-  try {
-    console.log("Gọi getAllOrders...");
-    const orders = await Order.find();
 
-    res.status(200).json({
-      success: true,
-      count: orders.length,
-      data: orders,
-    });
-    console.log("Danh sách đơn hàng:", orders); // In ra danh sách đơn hàng
-  } catch (err) {
-    console.log("Lỗi khi gọi getAllOrders:", err);
-    next(err);
-  }
-};
 
