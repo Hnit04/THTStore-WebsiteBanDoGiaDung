@@ -16,35 +16,40 @@ import FAQPage from "./pages/FAQPage.jsx"
 import PolicyPage from "./pages/PolicyPage.jsx"
 import ProductAdminPage from "./pages/ProductAdminPage.jsx"
 import CustomerPage from "./pages/CustomesPage.jsx"
+import OrderPage from "./pages/OrderPage.jsx"
+import FavoritesPage from "./pages/FavoritesPage.jsx"
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<HomePage />} />
-        <Route path="products" element={<ProductsPage />} />
-        <Route path="products/:id" element={<ProductDetailPage />} />
-        <Route path="cart" element={<CartPage />} />
-        <Route path="login" element={<LoginPage />} />
-        <Route path="register" element={<RegisterPage />} />
-        <Route path="about" element={<AboutPage />} />
-        <Route path="contact" element={<Contact />} />
-        <Route path="faq" element={<FAQPage />} />
-        <Route path="privacy-policy" element={<PolicyPage />} />
-        {/* Admin */}
-        <Route path="admin/products" element={<ProductAdminPage/>} />
-        <Route path="admin/customers" element={<CustomerPage/>} />
-        {/* Public Routes */}
-        {/* Protected Routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="profile" element={<ProfilePage />} />
-          <Route path="checkout" element={<CheckoutPage />} />
-        </Route>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<HomePage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="products/:id" element={<ProductDetailPage />} />
+          <Route path="cart" element={<CartPage />} />
+          <Route path="favorites" element={<FavoritesPage />} />
+          <Route path="login" element={<LoginPage />} />
+          <Route path="register" element={<RegisterPage />} />
+          <Route path="about" element={<AboutPage />} />
+          <Route path="contact" element={<Contact />} />
+          <Route path="faq" element={<FAQPage />} />
+          <Route path="privacy-policy" element={<PolicyPage />} />
 
-        {/* 404 Page */}
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
-    </Routes>
+          {/* Admin */}
+          <Route path="admin/products" element={<ProductAdminPage />} />
+          <Route path="admin/customers" element={<CustomerPage />} />
+          <Route path="admin/orders" element={<OrderPage />} />
+
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="checkout" element={<CheckoutPage />} />
+          </Route>
+
+          {/* 404 Page */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
   )
 }
 

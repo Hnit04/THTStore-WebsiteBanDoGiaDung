@@ -22,22 +22,22 @@ exports.getUserOrders = async (req, res, next) => {
 // @access  Private
 exports.getOrderById = async (req, res, next) => {
   try {
-    const order = await Order.findById(req.params.id)
+    const order = await Order.find({id: req.params.id})
 
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        error: "Không tìm thấy đơn hàng",
-      })
-    }
+    // if (!order) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     error: "Không tìm thấy đơn hàng",
+    //   })
+    // }
 
     // Đảm bảo người dùng chỉ có thể xem đơn hàng của chính họ
-    if (order.user.toString() !== req.user.id && req.user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Không có quyền truy cập đơn hàng này",
-      })
-    }
+    // if (order.user.toString() !== req.user.id && req.user.role !== "admin") {
+    //   return res.status(403).json({
+    //     success: false,
+    //     error: "Không có quyền truy cập đơn hàng này",
+    //   })
+    // }
 
     res.status(200).json({
       success: true,
@@ -108,3 +108,24 @@ exports.cancelOrder = async (req, res, next) => {
     next(err)
   }
 }
+
+// @desc    Get all orders
+// @route   GET /api/admin/orders
+// @access  Private (Admin only)
+exports.getAllOrders = async (req, res, next) => {
+  try {
+    console.log("Gọi getAllOrders...");
+    const orders = await Order.find();
+
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      data: orders,
+    });
+    console.log("Danh sách đơn hàng:", orders); // In ra danh sách đơn hàng
+  } catch (err) {
+    console.log("Lỗi khi gọi getAllOrders:", err);
+    next(err);
+  }
+};
+

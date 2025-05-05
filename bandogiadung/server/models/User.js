@@ -1,3 +1,4 @@
+// models/User.js
 const mongoose = require("mongoose")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
@@ -48,6 +49,16 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  verificationCode: {
+    type: String,
+  },
+  verificationCodeExpiry: {
+    type: Date,
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 // Encrypt password using bcrypt
@@ -62,10 +73,9 @@ UserSchema.pre("save", async function (next) {
 
 // Sign JWT and return
 UserSchema.methods.getSignedJwtToken = function () {
-  const expiresIn = String(process.env.JWT_EXPIRE).trim() // ép kiểu & loại bỏ ký tự lạ
+  const expiresIn = String(process.env.JWT_EXPIRE).trim()
   return jwt.sign({ id: this._id }, process.env.JWT_SECRET, { expiresIn })
 }
-
 
 // Match user entered password to hashed password in database
 UserSchema.methods.matchPassword = async function (enteredPassword) {
