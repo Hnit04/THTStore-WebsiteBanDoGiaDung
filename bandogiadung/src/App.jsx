@@ -19,7 +19,6 @@ import CustomerPage from "./pages/CustomesPage.jsx"
 import OrderPage from "./pages/OrderPage.jsx"
 import FavoritesPage from "./pages/FavoritesPage.jsx"
 import MyOrderPage from "./pages/MyOrderPage.jsx"
-
 function App() {
   return (
       <Routes>
