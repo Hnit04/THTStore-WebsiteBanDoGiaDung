@@ -142,7 +142,7 @@ exports.changePassword = async (req, res, next) => {
     }
 
     // Lấy thông tin người dùng kèm mật khẩu
-    const user = await User.findById(req.user.id).select("+password")
+    const user = await User.findById(req.user._id).select("+password")
 
     if (!user) {
       return res.status(404).json({
