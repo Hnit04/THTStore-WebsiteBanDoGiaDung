@@ -29,7 +29,6 @@ const Product = require('../models/Product');
 
 exports.getAllOrders = async (req, res, next) => {
   try {
-    console.log("Gọi getAllOrders...");
     const statusOrder = ["pending", "processing", "shipped", "delivered"];
 
     const orders = await Order.find().lean(); // Use lean() for better performance
@@ -82,6 +81,64 @@ exports.getAllOrders = async (req, res, next) => {
     next(err);
   }
 };
+
+// backend controller (OrderController.js)
+exports.getAllOrdersById = async (req, res, next) => {
+  try {
+    const email = req.params.email; // Lấy email từ URL
+    const statusOrder = ["pending", "processing", "shipped", "delivered"];
+
+    const orders = await Order.find({ email }).lean(); // Lọc đơn hàng theo email
+
+    const ordersWithDetails = await Promise.all(
+      orders.map(async (order) => {
+        // Lấy thông tin người dùng từ email
+        const user = await User.findOne({ email: order.email }).lean();
+
+        // Lấy thông tin sản phẩm kèm hình ảnh
+        const itemsWithImages = await Promise.all(
+          order.items.map(async (item) => {
+            const product = await Product.findOne({ id: item.product_id }).lean();
+            return {
+              ...item,
+              image_url: product?.image_url || null,
+              product_name: product?.name || item.product_name || "Unknown Product",
+            };
+          })
+        );
+
+        return {
+          ...order,
+          items: itemsWithImages,
+
+        };
+      })
+    );
+
+    ordersWithDetails.sort((a, b) => {
+      const aStatusIndex = statusOrder.indexOf(a.status);
+      const bStatusIndex = statusOrder.indexOf(b.status);
+    
+      if (aStatusIndex !== bStatusIndex) {
+        return aStatusIndex - bStatusIndex; // Ưu tiên status
+      } else {
+        return new Date(a.created_at) - new Date(b.created_at); // Ưu tiên ngày đặt sớm hơn
+      }
+    });
+    console.log("ordersWithDetails", ordersWithDetails);
+    res.status(200).json({
+      success: true,
+      count: ordersWithDetails.length,
+      data: ordersWithDetails,
+    });
+
+    console.log("Danh sách đơn hàng:", ordersWithDetails);
+  } catch (err) {
+    console.error("Lỗi khi gọi getAllOrders:", err);
+    next(err);
+  }
+};
+
 
 
 

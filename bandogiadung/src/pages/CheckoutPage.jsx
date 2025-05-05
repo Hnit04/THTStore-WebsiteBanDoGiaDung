@@ -102,6 +102,8 @@ function CheckoutPage() {
       // Prepare order data with selected items
       const orderData = {
         email: user.email,
+        name: formData.fullName,
+        phone: formData.phone,
         status: "pending",
         total_amount: total,
         shipping_address: `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.city}`,
