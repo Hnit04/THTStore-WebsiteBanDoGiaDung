@@ -21,13 +21,13 @@ function CheckoutPage() {
 
   // Khởi tạo formData với thông tin người dùng từ MongoDB
   const [formData, setFormData] = useState({
-    fullName: user?.fullName || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
-    address: user?.address || "",
-    city: user?.city || "",
-    district: user?.district || "",
-    ward: user?.ward || "",
+    fullName:  "",
+    email: user.email || "",
+    phone: "",
+    address:  "",
+    city:  "",
+    district:  "",
+    ward:  "",
     paymentMethod: "cod",
   });
 
@@ -101,7 +101,9 @@ function CheckoutPage() {
 
       // Prepare order data with selected items
       const orderData = {
-        user_id: user.id,
+        email: user.email,
+        name: formData.fullName,
+        phone: formData.phone,
         status: "pending",
         total_amount: total,
         shipping_address: `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.city}`,
@@ -115,7 +117,7 @@ function CheckoutPage() {
           quantity: item.quantity,
         })),
       };
-
+      console.log("Order Data:", orderData);
       // Create order
       await createOrder(orderData);
 
@@ -158,7 +160,7 @@ function CheckoutPage() {
                         required
                     />
                   </div>
-                  <div>
+                  <div className="hidden">
                     <label htmlFor="email" className="block text-gray-700 mb-2">
                       Email
                     </label>
@@ -170,6 +172,7 @@ function CheckoutPage() {
                         onChange={handleChange}
                         className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent"
                         required
+                        disabled
                     />
                   </div>
                 </div>

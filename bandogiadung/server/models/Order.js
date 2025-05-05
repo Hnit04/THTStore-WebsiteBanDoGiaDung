@@ -1,32 +1,25 @@
 const mongoose = require("mongoose")
 
 const OrderSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.ObjectId,
-    ref: "User",
+  id: {
+    type: String, 
+  },
+  email:{
+    type: String,
     required: true,
   },
-  items: [
-    {
-      product_id: {
-        type: mongoose.Schema.ObjectId,
-        ref: "Product",
-      },
-      product_name: {
-        type: String,
-        required: true,
-      },
-      product_price: {
-        type: Number,
-        required: true,
-      },
-      quantity: {
-        type: Number,
-        required: true,
-        min: [1, "Số lượng không được nhỏ hơn 1"],
-      },
-    },
-  ],
+  name: {
+    type: String,
+  },
+  phone: {
+    type: String,
+  },
+  status: {
+    type: String,
+    required: true,
+    enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
+    default: "pending",
+  },
   total_amount: {
     type: Number,
     required: true,
@@ -57,20 +50,36 @@ const OrderSchema = new mongoose.Schema({
     enum: ["pending", "completed", "failed", "refunded"],
     default: "pending",
   },
-  status: {
-    type: String,
-    required: true,
-    enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
-    default: "pending",
-  },
   created_at: {
     type: Date,
     default: Date.now,
   },
   updated_at: {
     type: Date,
-    default: Date.now,
+    default: null,
   },
+  items: [
+    {
+      product_id: {
+        type: String,
+        ref: "Product",
+      },
+      product_name: {
+        type: String,
+        required: true,
+      },
+      product_price: {
+        type: Number,
+        required: true,
+      },
+      quantity: {
+        type: Number,
+        required: true,
+        min: [1, "Số lượng không được nhỏ hơn 1"],
+      },
+    },
+  ],
+  
 })
 
 module.exports = mongoose.model("Order", OrderSchema)
