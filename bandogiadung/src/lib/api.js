@@ -84,6 +84,12 @@ export async function getAllOrders() {
   return response;
 }
 
+export async function getAllOrdersById(user) {
+  console.log("user2", user);
+  const response = await fetchAPI(`/users/myorders/${user.email}`);
+  return response;
+}
+
 export async function getUserOrders() {
   const response = await fetchAPI("/orders");
   return response;

@@ -1,38 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { SearchIcon, PackageIcon, TruckIcon, ClipboardListIcon, ShoppingBagIcon } from "lucide-react";
-import { getAllOrders } from "../lib/api.js"; // Import hàm getAllOrders
-
-const OrderPage = () => {
+import { getAllOrdersById } from "../lib/api.js"; // Import hàm getAllOrders
+import { useAuth } from "../contexts/AuthContext.jsx"; // Import useAuth nếu cần thiết
+const MyOrderPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [searchDate, setSearchDate] = useState("");
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        const response = await getAllOrders(); // Sử dụng hàm getAllOrders đã import
-        // console.log("Orders", response);
-        // Đã sửa để khớp với cấu trúc dữ liệu backend
-        setOrders(response);
-        if (response && response.length > 0) {
-          setSelectedOrder(response[0]);
-        }
-      } catch (error) {
-        console.error("Error fetching orders:", error);
-        setOrders([]); // Set orders thành mảng rỗng để không bị lỗi
-        setSelectedOrder(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchOrders();
-  }, []);
-
-  const handleRowClick = (order) => {
-    setSelectedOrder(order);
-  };
+  const { user } = useAuth();
 
   // Đã sửa để khớp với cấu trúc dữ liệu backend
   const filteredOrders = orders.filter(order => {
@@ -132,6 +108,30 @@ const OrderPage = () => {
         return <ClipboardListIcon className="w-4 h-4" />;
     }
   };
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        const response = await getAllOrdersById(user);
+        setOrders(response);
+        setSelectedOrder(response[0]);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+        setOrders([]);
+        setSelectedOrder(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, [user]);
+  
+
+  const handleRowClick = (order) => {
+    setSelectedOrder(order);
+  };
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Quản lý đơn hàng</h1>
@@ -170,7 +170,7 @@ const OrderPage = () => {
 
                   <div className="text-center mb-4">
                     <h3 className="text-xl font-bold text-gray-800">Đơn hàng #{selectedOrder.id}</h3>
-                    <p className="text-sm text-gray-500">{selectedOrder.email}</p>
+                    {/* <p className="text-sm text-gray-500">{selectedOrder.email}</p> */}
                     <div className="mt-2">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.status)}`}
@@ -277,7 +277,7 @@ const OrderPage = () => {
           <div className="bg-white rounded-lg shadow-md">
             <div className="border-b p-4">
               <h2 className="text-lg font-semibold mb-4">Danh sách đơn hàng</h2>
-              <div className="relative">
+              {/* <div className="relative">
                 <input
                   type="text"
                   placeholder="Tìm kiếm theo số điện thoại của khách hàng"
@@ -294,11 +294,11 @@ const OrderPage = () => {
                     
                   </button>
                 )}
-              </div>
+              </div> */}
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Tìm kiếm theo ngày đặt hàng của khách hàng"
+                  placeholder="Tìm kiếm theo ngày đặt hàng"
                   className="w-full mt-5 pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={searchDate}
                   onChange={(e) => setSearchDate(e.target.value)}
@@ -325,12 +325,6 @@ const OrderPage = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tên chủ sở hữu
-                      </th>
-                      <th className=" text-center py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Số điện thoại
-                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Tên người nhận
                       </th>
@@ -369,14 +363,6 @@ const OrderPage = () => {
                             hover:bg-gray-50
                           `}
                         >
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{order.user_fullName}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {order.user_phone|| "Chưa có số điện thoại"}
-                            </div>
-                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{order.name}</div>
                           </td>
@@ -439,4 +425,4 @@ const OrderPage = () => {
   );
 };
 
-export default OrderPage;
+export default MyOrderPage;
