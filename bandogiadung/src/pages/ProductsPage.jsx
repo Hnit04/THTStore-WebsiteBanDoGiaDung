@@ -20,7 +20,7 @@ function ProductsPage() {
   const { user, isAuthenticated } = useAuth()
   const isAdmin = isAuthenticated && user && user.role === "admin"
   const { toggleFavorite, isFavorite } = useFavorites()
-  const { addToCart, cart } = useCart()
+  const { addToCart, cart, refreshCart } = useCart()
 
   const categoryParam = searchParams.get("category")
   const searchParam = searchParams.get("search")
@@ -146,22 +146,27 @@ function ProductsPage() {
       return
     }
     try {
-      console.log("Adding product to cart, product ID:", product.id)
-      await addToCart(product, 1)
+      console.log("Processing buy now for product ID:", product.id)
 
-      // Chờ để đảm bảo cart được cập nhật
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
+      let cartItem = cart.find(item => item.product?.id === product.id)
 
-      console.log("Cart after add:", cart.map(item => ({ _id: item._id, productId: item.product?.id })))
-
-      // Tìm mục giỏ hàng vừa thêm vào
-      const cartItem = cart.find(item => item.product?.id === product.id)
       if (!cartItem) {
-        throw new Error("Sản phẩm chưa được thêm vào giỏ hàng")
+        console.log("Product not in cart, adding to cart with quantity 1")
+        await addToCart(product, 1)
+        console.log("Fetching updated cart")
+        const updatedCart = await refreshCart()
+        cartItem = updatedCart.find(item => item.product?.id === product.id)
+      } else {
+        console.log("Product already in cart, using existing cart item ID:", cartItem._id)
+      }
+
+      if (!cartItem) {
+        throw new Error("Không thể tìm thấy sản phẩm trong giỏ hàng sau khi thêm")
       }
 
       const params = new URLSearchParams()
-      params.append("items", cartItem._id) // Sử dụng item._id thay vì product.id
+      params.append("items", cartItem._id)
       console.log("Navigating to checkout with cart item ID:", cartItem._id)
       navigate(`/checkout?${params.toString()}`)
     } catch (error) {
@@ -368,8 +373,8 @@ function ProductsPage() {
                               <span className="font-bold text-red-600 text-lg">{formatCurrency(product.price)}</span>
                               {product.old_price && (
                                   <span className="text-gray-400 text-sm line-through ml-2">
-                            {formatCurrency(product.old_price)}
-                          </span>
+                                    {formatCurrency(product.old_price)}
+                                  </span>
                               )}
                             </div>
                           </div>
@@ -430,8 +435,8 @@ function ProductsPage() {
                                   <span className="font-bold text-red-600 text-xl">{formatCurrency(product.price)}</span>
                                   {product.old_price && (
                                       <span className="text-gray-400 text-sm line-through ml-2">
-                                {formatCurrency(product.old_price)}
-                              </span>
+                                        {formatCurrency(product.old_price)}
+                                      </span>
                                   )}
                                 </div>
                               </div>
