@@ -374,7 +374,7 @@ const OrderPage = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">
-                              {order.user_phone}
+                              {order.user_phone|| "Chưa có số điện thoại"}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">

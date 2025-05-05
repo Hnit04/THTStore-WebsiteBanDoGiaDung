@@ -21,13 +21,13 @@ function CheckoutPage() {
 
   // Khởi tạo formData với thông tin người dùng từ MongoDB
   const [formData, setFormData] = useState({
-    fullName: user?.fullName || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
-    address: user?.address || "",
-    city: user?.city || "",
-    district: user?.district || "",
-    ward: user?.ward || "",
+    fullName:  "",
+    email: user.email || "",
+    phone: "",
+    address:  "",
+    city:  "",
+    district:  "",
+    ward:  "",
     paymentMethod: "cod",
   });
 
@@ -160,7 +160,7 @@ function CheckoutPage() {
                         required
                     />
                   </div>
-                  <div>
+                  <div className="hidden">
                     <label htmlFor="email" className="block text-gray-700 mb-2">
                       Email
                     </label>
@@ -172,6 +172,7 @@ function CheckoutPage() {
                         onChange={handleChange}
                         className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent"
                         required
+                        disabled
                     />
                   </div>
                 </div>

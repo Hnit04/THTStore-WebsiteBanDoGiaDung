@@ -54,7 +54,7 @@ exports.getAllOrders = async (req, res, next) => {
           ...order,
           items: itemsWithImages,
           user_fullName: user?.fullName || "Unknown User",
-          user_phone: user?.phone || "Unknown Phone",
+          user_phone: user?.phone || "Chưa có số điện thoại",
         };
       })
     );
