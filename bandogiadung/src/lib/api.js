@@ -1,4 +1,3 @@
-// src/lib/api.js
 const API_URL = "http://localhost:5000/api";
 
 // Hàm helper để gọi API
@@ -125,6 +124,30 @@ export async function verifyEmail(email, verificationCode) {
   const response = await fetchAPI("/auth/verify-email", {
     method: "POST",
     body: JSON.stringify({ email, verificationCode }),
+  });
+  return response;
+}
+
+export async function forgotPassword(email) {
+  const response = await fetchAPI("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  return response;
+}
+
+export async function verifyResetCode(email, resetCode) {
+  const response = await fetchAPI("/auth/verify-reset-code", {
+    method: "POST",
+    body: JSON.stringify({ email, resetCode }),
+  });
+  return response;
+}
+
+export async function resetPassword(email, resetCode, newPassword) {
+  const response = await fetchAPI("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ email, resetCode, newPassword }),
   });
   return response;
 }
