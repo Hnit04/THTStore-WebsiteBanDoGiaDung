@@ -101,7 +101,7 @@ function CheckoutPage() {
 
       // Prepare order data with selected items
       const orderData = {
-        user_id: user.id,
+        email: user.email,
         status: "pending",
         total_amount: total,
         shipping_address: `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.city}`,
@@ -115,7 +115,7 @@ function CheckoutPage() {
           quantity: item.quantity,
         })),
       };
-
+      console.log("Order Data:", orderData);
       // Create order
       await createOrder(orderData);
 

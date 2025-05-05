@@ -30,6 +30,8 @@ const Product = require('../models/Product');
 exports.getAllOrders = async (req, res, next) => {
   try {
     console.log("Gọi getAllOrders...");
+    const statusOrder = ["pending", "processing", "shipped", "delivered"];
+
     const orders = await Order.find().lean(); // Use lean() for better performance
 
     const ordersWithDetails = await Promise.all(
@@ -58,6 +60,11 @@ exports.getAllOrders = async (req, res, next) => {
       })
     );
 
+    ordersWithDetails.sort((a, b) => {
+      const aStatusIndex= statusOrder.indexOf(a.status);
+      const bStatusIndex = statusOrder.indexOf(b.status);
+      return aStatusIndex - bStatusIndex; // Sắp xếp theo thứ tự status
+    });
     res.status(200).json({
       success: true,
       count: ordersWithDetails.length,

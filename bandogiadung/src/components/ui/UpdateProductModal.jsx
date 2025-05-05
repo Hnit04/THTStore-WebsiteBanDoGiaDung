@@ -98,6 +98,7 @@ function UpdateProductModal({ product, isOpen, onClose }) {
 
             if (response) {
                 alert("Cập nhật sản phẩm thành công!");
+                window.location.reload();
                 onClose();
             } else {
                 alert("Cập nhật sản phẩm thất bại!");
