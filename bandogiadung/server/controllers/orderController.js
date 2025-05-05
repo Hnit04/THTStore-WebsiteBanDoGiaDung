@@ -48,51 +48,24 @@ exports.getOrderById = async (req, res, next) => {
     }
 }
 
-const Product = require("../models/Product")
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
-
 exports.createOrder = async (req, res, next) => {
-  try {
-    // Đếm số đơn hàng để sinh mã đơn tiếp theo
-    const count = await Order.countDocuments();
-    const newOrderId = `ORD-${String(count + 1).padStart(3, "0")}`;
-    req.body.id = newOrderId;
+    try {
+        // Thêm user ID vào req.body
+        req.body.user = req.user.id
 
-    // Nếu có xác thực user
-    if (req.user && req.user.id) {
-      req.body.user = req.user.id;
+        const order = await Order.create(req.body)
+
+        res.status(201).json({
+            success: true,
+            data: order,
+        })
+    } catch (err) {
+        next(err)
     }
-
-    // Lặp qua từng item để lấy "id" từ Product và gán lại cho product_id
-    for (let i = 0; i < req.body.items.length; i++) {
-      const productObj = await Product.findById(req.body.items[i].product_id);
-
-      if (!productObj) {
-        return res.status(404).json({
-          success: false,
-          error: `Không tìm thấy sản phẩm với _id: ${req.body.items[i].product_id}`,
-        });
-      }
-
-      // Gán lại product_id = productObj.id (không phải _id)
-      req.body.items[i].product_id = productObj.id;
-    }
-
-    console.log("Final Order Body:", req.body); // Kiểm tra sau khi gán xong
-
-    // Tạo đơn hàng
-    const order = await Order.create(req.body);
-
-    res.status(201).json({
-      success: true,
-      data: order,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
+}
 
 // @desc    Cancel order
 // @route   PUT /api/orders/:id/cancel

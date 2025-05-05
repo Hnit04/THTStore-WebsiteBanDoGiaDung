@@ -1,4 +1,3 @@
-// controllers/authController.js
 const User = require("../models/User")
 const sendEmail = require("../utils/sendEmail")
 const crypto = require("crypto")
@@ -23,8 +22,8 @@ exports.register = async (req, res, next) => {
     const verificationCode = crypto.randomBytes(3).toString("hex").toUpperCase()
     const verificationCodeExpiry = Date.now() + 10 * 60 * 1000 // 10 phút
 
-    console.log(`[Register] Generated verification code for ${email}: ${verificationCode}`); // Log mã xác nhận
-    console.log(`[Register] Code expiry: ${new Date(verificationCodeExpiry)}`); // Log thời gian hết hạn
+    console.log(`[Register] Generated verification code for ${email}: ${verificationCode}`);
+    console.log(`[Register] Code expiry: ${new Date(verificationCodeExpiry)}`);
 
     // Tạo user
     const user = await User.create({
@@ -35,7 +34,7 @@ exports.register = async (req, res, next) => {
       verificationCodeExpiry,
     })
 
-    // Gửi email xác nhận
+    // Gửi email xác thua
     const message = `Mã xác nhận của bạn là: ${verificationCode}\nMã này sẽ hết hạn sau 10 phút.`
     await sendEmail({
       email: user.email,
@@ -61,7 +60,7 @@ exports.verifyEmail = async (req, res, next) => {
   try {
     const { email, verificationCode } = req.body
 
-    console.log(`[VerifyEmail] Received request for ${email} with code: ${verificationCode}`); // Log email và mã nhận được
+    console.log(`[VerifyEmail] Received request for ${email} with code: ${verificationCode}`);
 
     const user = await User.findOne({ email })
 
@@ -73,7 +72,7 @@ exports.verifyEmail = async (req, res, next) => {
       })
     }
 
-    console.log(`[VerifyEmail] Stored code: ${user.verificationCode}, Expiry: ${new Date(user.verificationCodeExpiry)}`); // Log mã và thời gian hết hạn từ DB
+    console.log(`[VerifyEmail] Stored code: ${user.verificationCode}, Expiry: ${new Date(user.verificationCodeExpiry)}`);
 
     if (user.isEmailVerified) {
       console.log(`[VerifyEmail] Email already verified for ${email}`);
@@ -107,6 +106,145 @@ exports.verifyEmail = async (req, res, next) => {
     })
   } catch (err) {
     console.error("[VerifyEmail] Error:", err);
+    next(err)
+  }
+}
+
+// @desc    Forgot password
+// @route   POST /api/auth/forgot-password
+// @access  Public
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body
+
+    console.log(`[ForgotPassword] Received request for ${email}`);
+
+    const user = await User.findOne({ email })
+
+    if (!user) {
+      console.log(`[ForgotPassword] User not found for email: ${email}`);
+      return res.status(404).json({
+        success: false,
+        error: "Không tìm thấy người dùng",
+      })
+    }
+
+    // Tạo mã đặt lại mật khẩu
+    const resetCode = crypto.randomBytes(3).toString("hex").toUpperCase()
+    const resetCodeExpiry = Date.now() + 10 * 60 * 1000 // 10 phút
+
+    console.log(`[ForgotPassword] Generated reset code for ${email}: ${resetCode}`);
+    console.log(`[ForgotPassword] Code expiry: ${new Date(resetCodeExpiry)}`);
+
+    user.resetPasswordCode = resetCode
+    user.resetPasswordExpiry = resetCodeExpiry
+    await user.save()
+
+    // Gửi email với mã đặt lại
+    const message = `Mã đặt lại mật khẩu của bạn là: ${resetCode}\nMã này sẽ hết hạn sau 10 phút.`
+    await sendEmail({
+      email: user.email,
+      subject: "Đặt lại mật khẩu - THT Store",
+      message,
+    })
+
+    res.status(200).json({
+      success: true,
+      message: "Mã đặt lại mật khẩu đã được gửi đến email của bạn",
+    })
+  } catch (err) {
+    console.error("[ForgotPassword] Error:", err);
+    next(err)
+  }
+}
+
+// @desc    Verify reset code
+// @route   POST /api/auth/verify-reset-code
+// @access  Public
+exports.verifyResetCode = async (req, res, next) => {
+  try {
+    const { email, resetCode } = req.body
+
+    console.log(`[VerifyResetCode] Received request for ${email} with code: ${resetCode}`);
+
+    const user = await User.findOne({ email })
+
+    if (!user) {
+      console.log(`[VerifyResetCode] User not found for email: ${email}`);
+      return res.status(404).json({
+        success: false,
+        error: "Không tìm thấy người dùng",
+      })
+    }
+
+    console.log(`[VerifyResetCode] Stored code: ${user.resetPasswordCode}, Expiry: ${new Date(user.resetPasswordExpiry)}`);
+
+    if (
+        user.resetPasswordCode !== resetCode ||
+        user.resetPasswordExpiry < Date.now()
+    ) {
+      console.log(`[VerifyResetCode] Code mismatch or expired for ${email}. Received: ${resetCode}, Expected: ${user.resetPasswordCode}, Expiry: ${user.resetPasswordExpiry < Date.now() ? 'Expired' : 'Valid'}`);
+      return res.status(400).json({
+        success: false,
+        error: "Mã đặt lại không hợp lệ hoặc đã hết hạn",
+      })
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Mã đặt lại hợp lệ",
+    })
+  } catch (err) {
+    console.error("[VerifyResetCode] Error:", err);
+    next(err)
+  }
+}
+
+// @desc    Reset password
+// @route   POST /api/auth/reset-password
+// @access  Public
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { email, resetCode, newPassword } = req.body
+
+    console.log(`[ResetPassword] Received request for ${email}`);
+
+    const user = await User.findOne({ email })
+
+    if (!user) {
+      console.log(`[ResetPassword] User not found for email: ${email}`);
+      return res.status(404).json({
+        success: false,
+        error: "Không tìm thấy người dùng",
+      })
+    }
+
+    console.log(`[ResetPassword] Stored code: ${user.resetPasswordCode}, Expiry: ${new Date(user.resetPasswordExpiry)}`);
+
+    if (
+        user.resetPasswordCode !== resetCode ||
+        user.resetPasswordExpiry < Date.now()
+    ) {
+      console.log(`[ResetPassword] Code mismatch or expired for ${email}. Received: ${resetCode}, Expected: ${user.resetPasswordCode}, Expiry: ${user.resetPasswordExpiry < Date.now() ? 'Expired' : 'Valid'}`);
+      return res.status(400).json({
+        success: false,
+        error: "Mã đặt lại không hợp lệ hoặc đã hết hạn",
+      })
+    }
+
+    user.password = newPassword
+    user.resetPasswordCode = undefined
+    user.resetPasswordExpiry = undefined
+    await user.save()
+
+    console.log(`[ResetPassword] Password reset successful for ${email}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Đặt lại mật khẩu thành công",
+    })
+  } catch (err) {
+    console.error("[ResetPassword] Error:", err);
     next(err)
   }
 }
