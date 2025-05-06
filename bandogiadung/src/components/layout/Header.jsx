@@ -82,7 +82,7 @@ function Header() {
 
               {!isAdmin && (
                   <div className="relative group">
-                    <button
+                    {/* <button
                         onClick={() => setIsFavoritesOpen(!isFavoritesOpen)}
                         className="p-2 rounded-full hover:bg-gray-700 relative text-white"
                     >
@@ -92,8 +92,8 @@ function Header() {
                       {favorites.length}
                     </span>
                       )}
-                    </button>
-                    {isFavoritesOpen && (
+                    </button> */}
+                    {/* {isFavoritesOpen && (
                         <div className="absolute right-0 w-64 bg-white rounded-md shadow-lg py-2 z-10">
                           <h4 className="px-4 py-2 text-sm font-bold text-gray-700">Sản phẩm yêu thích</h4>
                           {favorites.length === 0 ? (
@@ -125,7 +125,7 @@ function Header() {
                               </>
                           )}
                         </div>
-                    )}
+                    )} */}
                   </div>
               )}
 
@@ -156,9 +156,9 @@ function Header() {
                             <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
                               Thông tin cá nhân
                             </Link>
-                            <Link to="/admin/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
+                            {/* <Link to="/admin/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
                               Cài đặt hệ thống
-                            </Link>
+                            </Link> */}
                           </>
                       ) : (
                           <>
@@ -168,9 +168,9 @@ function Header() {
                             <Link to="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
                               Đơn hàng của tôi
                             </Link>
-                            <Link to="/favorites" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
+                            {/* <Link to="/favorites" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
                               Sản phẩm yêu thích
-                            </Link>
+                            </Link> */}
                           </>
                       )}
 
@@ -247,13 +247,13 @@ function Header() {
                               >
                                 Thông tin cá nhân
                               </Link>
-                              <Link
+                              {/* <Link
                                   to="/admin/settings"
                                   className="text-gray-700 hover:text-red-600 font-medium py-2"
                                   onClick={() => setIsMenuOpen(false)}
                               >
                                 Cài đặt hệ thống
-                              </Link>
+                              </Link> */}
                             </>
                         ) : (
                             <>
@@ -271,13 +271,13 @@ function Header() {
                               >
                                 Đơn hàng của tôi
                               </Link>
-                              <Link
+                              {/* <Link
                                   to="/favorites"
                                   className="text-gray-700 hover:text-red-600 font-medium py-2"
                                   onClick={() => setIsMenuOpen(false)}
                               >
                                 Sản phẩm yêu thích
-                              </Link>
+                              </Link> */}
                             </>
                         )}
                         <button

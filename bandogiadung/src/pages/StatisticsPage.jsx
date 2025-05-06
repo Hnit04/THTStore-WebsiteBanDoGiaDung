@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { BarChart, LineChart, PieChart, ArrowUpRight, Package, DollarSign, Calendar, Users, ShoppingBag } from 'lucide-react';
-import * as d3 from 'd3';
+// import * as d3 from 'd3';
 import { getAllOrders } from '../lib/api.js';
 import ApexCharts from 'apexcharts';
 
