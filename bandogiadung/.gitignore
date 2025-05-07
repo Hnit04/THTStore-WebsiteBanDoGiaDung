@@ -33,3 +33,4 @@ dist-ssr
 # Miscellaneous
 *.log
 npm-debug.log*
+.vercel
