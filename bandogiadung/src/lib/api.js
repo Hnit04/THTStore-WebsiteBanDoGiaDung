@@ -1,3 +1,4 @@
+// client/src/lib/api.js
 import axios from "axios"
 const API_URL = "http://localhost:5000/api"
 
@@ -60,12 +61,20 @@ export async function getProducts(options = {}) {
 }
 
 export async function getProductById(id) {
-  if (!id) {
+  if (!id || typeof id !== "string") {
     console.error("getProductById called with invalid id:", id)
     throw new Error("ID sản phẩm không hợp lệ")
   }
-  const response = await fetchAPI(`/products/${id}`)
-  return response
+
+  console.log("Fetching product with ID:", id)
+  try {
+    const response = await fetchAPI(`/products/${id}`)
+    console.log("Product detail response:", response)
+    return response
+  } catch (error) {
+    console.error("Error fetching product details:", error)
+    throw error
+  }
 }
 
 // Danh mục
@@ -242,19 +251,17 @@ export async function getCart() {
     return response
   } catch (error) {
     console.error("Error fetching cart:", error)
-    // Trả về mảng rỗng để tránh lỗi khi xử lý dữ liệu
     return []
   }
 }
 
 export async function addToCart(productId, quantity) {
-  if (!productId) {
+  if (!productId || typeof productId !== "string") {
     console.error("addToCart called with invalid productId:", productId)
     throw new Error("ID sản phẩm không hợp lệ")
   }
 
   console.log(`Adding to cart: productId=${productId}, quantity=${quantity}`)
-
   try {
     const response = await fetchAPI("/cart", {
       method: "POST",
@@ -269,13 +276,12 @@ export async function addToCart(productId, quantity) {
 }
 
 export async function updateCartItem(itemId, quantity) {
-  if (!itemId) {
+  if (!itemId || typeof itemId !== "string") {
     console.error("updateCartItem called with invalid itemId:", itemId)
     throw new Error("ID item giỏ hàng không hợp lệ")
   }
 
   console.log(`Updating cart item: itemId=${itemId}, quantity=${quantity}`)
-
   try {
     const response = await fetchAPI(`/cart/${itemId}`, {
       method: "PUT",
@@ -290,13 +296,12 @@ export async function updateCartItem(itemId, quantity) {
 }
 
 export async function removeFromCart(itemId) {
-  if (!itemId) {
+  if (!itemId || typeof itemId !== "string") {
     console.error("removeFromCart called with invalid itemId:", itemId)
     throw new Error("ID item giỏ hàng không hợp lệ")
   }
 
   console.log(`Removing from cart: itemId=${itemId}`)
-
   try {
     const response = await fetchAPI(`/cart/${itemId}`, {
       method: "DELETE",
@@ -309,7 +314,6 @@ export async function removeFromCart(itemId) {
   }
 }
 
-// Thêm hàm để xóa toàn bộ giỏ hàng
 export async function clearCart() {
   try {
     console.log("Clearing cart")

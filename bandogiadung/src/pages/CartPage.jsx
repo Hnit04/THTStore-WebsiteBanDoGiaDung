@@ -1,3 +1,4 @@
+// client/src/pages/CartPage.jsx
 "use client";
 
 import { Link } from "react-router-dom";
@@ -5,11 +6,13 @@ import { useState, useEffect } from "react";
 import { useCart } from "../contexts/CartContext.jsx";
 import { formatCurrency } from "../lib/utils.js";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import toast from "react-hot-toast";
 
 function CartPage() {
   const { cart, loading, updateQuantity, removeFromCart, getCartTotal } = useCart();
   const { isAuthenticated } = useAuth();
   const [selectedItems, setSelectedItems] = useState(new Set());
+  const [inputQuantities, setInputQuantities] = useState({});
 
   useEffect(() => {
     console.log("Current cart items:", cart.map(item => ({
@@ -18,6 +21,12 @@ function CartPage() {
       name: item.product.name
     })));
     console.log("Currently selected items:", Array.from(selectedItems));
+    // Khởi tạo inputQuantities dựa trên cart
+    const initialQuantities = cart.reduce((acc, item) => ({
+      ...acc,
+      [item._id]: item.quantity.toString()
+    }), {});
+    setInputQuantities(initialQuantities);
   }, [cart, selectedItems]);
 
   const subtotal = getCartTotal();
@@ -83,6 +92,56 @@ function CartPage() {
     } else {
       setSelectedItems(new Set());
       console.log("Cleared selection");
+    }
+  };
+
+  const handleQuantityInputChange = (itemId, value) => {
+    setInputQuantities(prev => ({
+      ...prev,
+      [itemId]: value
+    }));
+  };
+
+  const handleQuantityInputBlur = async (itemId, item) => {
+    const value = inputQuantities[itemId];
+    const parsedQuantity = parseInt(value, 10);
+
+    if (isNaN(parsedQuantity) || parsedQuantity < 1) {
+      toast.error("Số lượng phải lớn hơn 0");
+      setInputQuantities(prev => ({
+        ...prev,
+        [itemId]: item.quantity.toString()
+      }));
+      return;
+    }
+
+    if (parsedQuantity > item.product.stock) {
+      toast.error(`Sản phẩm ${item.product.name} chỉ còn ${item.product.stock} đơn vị trong kho`);
+      setInputQuantities(prev => ({
+        ...prev,
+        [itemId]: item.quantity.toString()
+      }));
+      return;
+    }
+
+    try {
+      await updateQuantity(itemId, parsedQuantity);
+      setInputQuantities(prev => ({
+        ...prev,
+        [itemId]: parsedQuantity.toString()
+      }));
+    } catch (error) {
+      toast.error(error.message || "Không thể cập nhật số lượng");
+      setInputQuantities(prev => ({
+        ...prev,
+        [itemId]: item.quantity.toString()
+      }));
+    }
+  };
+
+  const handleQuantityInputKeyPress = (e, itemId, item) => {
+    if (e.key === 'Enter') {
+      handleQuantityInputBlur(itemId, item);
     }
   };
 
@@ -157,21 +216,36 @@ function CartPage() {
                               >
                                 {item.product.name}
                               </Link>
+                              <p className="text-gray-600 text-sm">
+                                Tồn kho: {typeof item.product.stock !== 'undefined' ? item.product.stock : 'Không xác định'}
+                              </p>
                             </div>
                           </div>
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center justify-center">
                             <button
-                                className="border border-gray-300 rounded-l-md px-3 py-1"
+                                className="border border-gray-300 rounded-l-md px-3 py-1 disabled:bg-gray-200"
                                 onClick={() => updateQuantity(cartItemId, Math.max(1, item.quantity - 1))}
+                                disabled={item.quantity <= 1 || loading}
                             >
                               -
                             </button>
-                            <span className="border-t border-b border-gray-300 px-4 py-1">{item.quantity}</span>
+                            <input
+                                type="number"
+                                value={inputQuantities[cartItemId] || item.quantity}
+                                onChange={(e) => handleQuantityInputChange(cartItemId, e.target.value)}
+                                onBlur={() => handleQuantityInputBlur(cartItemId, item)}
+                                onKeyPress={(e) => handleQuantityInputKeyPress(e, cartItemId, item)}
+                                className="w-16 text-center border-t border-b border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-red-600"
+                                min="1"
+                                max={item.product.stock}
+                                disabled={loading}
+                            />
                             <button
-                                className="border border-gray-300 rounded-r-md px-3 py-1"
+                                className="border border-gray-300 rounded-r-md px-3 py-1 disabled:bg-gray-200"
                                 onClick={() => updateQuantity(cartItemId, item.quantity + 1)}
+                                disabled={item.quantity >= item.product.stock || loading}
                             >
                               +
                             </button>
@@ -184,7 +258,8 @@ function CartPage() {
                         <td className="py-4 px-6 text-right">
                           <button
                               onClick={() => removeFromCart(cartItemId)}
-                              className="text-red-600 hover:text-red-800"
+                              className="text-red-600 hover:text-red-800 disabled:text-gray-400"
+                              disabled={loading}
                           >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -240,7 +315,7 @@ function CartPage() {
                     onClick={(e) => {
                       if (selectedItems.size === 0) {
                         e.preventDefault();
-                        console.warn("Vui lòng chọn ít nhất một sản phẩm");
+                        toast.error("Vui lòng chọn ít nhất một sản phẩm");
                       }
                     }}
                 >

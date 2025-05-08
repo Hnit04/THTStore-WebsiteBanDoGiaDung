@@ -1,3 +1,4 @@
+// client/src/contexts/CartContext.jsx
 "use client"
 
 import { createContext, useState, useContext, useEffect } from "react"
@@ -7,8 +8,9 @@ import {
   updateCartItem,
   removeFromCart as apiRemoveFromCart,
   clearCart as apiClearCart,
+  getProductById,
 } from "../lib/api.js"
-import { useAuth } from "./AuthContext" // Sửa đường dẫn import - bỏ .jsx
+import { useAuth } from "./AuthContext"
 import toast from "react-hot-toast"
 
 const CartContext = createContext()
@@ -19,21 +21,15 @@ export function CartProvider({ children }) {
   const { user, isAuthenticated } = useAuth()
   const [localCart, setLocalCart] = useState([])
 
-  // Tải giỏ hàng khi người dùng đăng nhập/đăng xuất
   useEffect(() => {
     if (isAuthenticated) {
-      // Lưu giỏ hàng cục bộ trước khi tải giỏ hàng từ server
       const currentLocalCart = [...cart]
-
-      // Tải giỏ hàng từ server
       fetchCart().then(() => {
-        // Sau khi tải giỏ hàng từ server, hợp nhất với giỏ hàng cục bộ
         if (currentLocalCart.length > 0) {
           mergeLocalCartWithServerCart(currentLocalCart)
         }
       })
     } else {
-      // Nếu không đăng nhập, tải giỏ hàng từ localStorage
       const savedLocalCart = localStorage.getItem("cart")
       if (savedLocalCart) {
         try {
@@ -46,33 +42,28 @@ export function CartProvider({ children }) {
     }
   }, [isAuthenticated, user])
 
-  // Lưu giỏ hàng vào localStorage khi không đăng nhập
   useEffect(() => {
     if (!isAuthenticated && cart.length >= 0) {
       localStorage.setItem("cart", JSON.stringify(cart))
     }
   }, [cart, isAuthenticated])
 
-  // Hợp nhất giỏ hàng cục bộ với giỏ hàng từ server
   const mergeLocalCartWithServerCart = async (localCartItems) => {
     try {
       setLoading(true)
-      // Thêm từng sản phẩm từ giỏ hàng cục bộ vào giỏ hàng server
       for (const item of localCartItems) {
         await apiAddToCart(item.product._id || item.product.id, item.quantity)
       }
-      // Sau khi thêm tất cả, tải lại giỏ hàng từ server
       await fetchCart()
-      // Xóa giỏ hàng cục bộ
       localStorage.removeItem("cart")
     } catch (error) {
       console.error("Error merging carts:", error)
+      toast.error(error.message || "Không thể hợp nhất giỏ hàng")
     } finally {
       setLoading(false)
     }
   }
 
-  // Tải giỏ hàng từ API
   const fetchCart = async () => {
     if (!isAuthenticated) return []
 
@@ -81,7 +72,6 @@ export function CartProvider({ children }) {
       const data = await getCart()
       console.log("Dữ liệu giỏ hàng từ API:", data)
 
-      // Chuẩn hóa dữ liệu trả về
       let cartItems = []
       if (Array.isArray(data)) {
         cartItems = data
@@ -98,7 +88,7 @@ export function CartProvider({ children }) {
       return cartItems
     } catch (error) {
       console.error("Lỗi khi tải giỏ hàng:", error.message || error)
-      toast.error(`Không thể tải giỏ hàng: ${error.message || "Lỗi không xác định"}`)
+      toast.error(error.message || "Không thể tải giỏ hàng")
       setCart([])
       return []
     } finally {
@@ -106,34 +96,37 @@ export function CartProvider({ children }) {
     }
   }
 
-  // Thêm sản phẩm vào giỏ hàng
   const addToCart = async (productId, quantity = 1) => {
     if (isAuthenticated) {
       try {
         setLoading(true)
-        console.log("Sending addToCart request with product _id:", productId)
-
-        // Thêm xử lý lỗi chi tiết
         if (!productId) {
           throw new Error("ID sản phẩm không hợp lệ")
         }
 
-        const result = await apiAddToCart(productId, quantity)
-        console.log("Kết quả thêm vào giỏ hàng:", result)
+        // Kiểm tra tồn kho trước khi gửi yêu cầu
+        const product = await getProductById(productId)
+        if (!product || typeof product.stock === 'undefined' || product.stock < quantity) {
+          throw new Error(`Sản phẩm ${product.name || 'này'} chỉ còn ${product.stock || 0} đơn vị trong kho.`)
+        }
 
-        // Đảm bảo fetchCart hoàn thành trước khi hiển thị thông báo
+        const existingItem = cart.find((item) => item.product._id === productId)
+        if (existingItem && existingItem.quantity + quantity > product.stock) {
+          throw new Error(`Sản phẩm ${product.name} chỉ còn ${product.stock} đơn vị trong kho.`)
+        }
+
+        await apiAddToCart(productId, quantity)
         const updatedCart = await fetchCart()
         toast.success("Đã thêm vào giỏ hàng")
         return updatedCart
       } catch (error) {
         console.error("Lỗi thêm vào giỏ hàng:", error.message || error)
-        toast.error(`Không thể thêm vào giỏ hàng: ${error.message || "Lỗi không xác định"}`)
+        toast.error(error.message || "Không thể thêm vào giỏ hàng")
         return null
       } finally {
         setLoading(false)
       }
     } else {
-      // Xử lý giỏ hàng cục bộ khi không đăng nhập
       setCart((prevCart) => {
         const existingItemIndex = prevCart.findIndex(
             (item) =>
@@ -141,12 +134,10 @@ export function CartProvider({ children }) {
         )
 
         if (existingItemIndex >= 0) {
-          // Cập nhật số lượng nếu sản phẩm đã tồn tại
           const updatedCart = [...prevCart]
           updatedCart[existingItemIndex].quantity += quantity
           return updatedCart
         } else {
-          // Thêm mới nếu sản phẩm chưa có trong giỏ hàng
           return [
             ...prevCart,
             {
@@ -157,33 +148,42 @@ export function CartProvider({ children }) {
           ]
         }
       })
-
       toast.success("Đã thêm vào giỏ hàng")
     }
   }
 
-  // Cập nhật số lượng sản phẩm
   const updateQuantity = async (itemId, quantity) => {
     if (quantity < 1) return
 
     if (isAuthenticated) {
       try {
         setLoading(true)
+        const item = cart.find((item) => item._id === itemId)
+        if (!item) {
+          throw new Error("Sản phẩm không tồn tại trong giỏ hàng")
+        }
+
+        // Kiểm tra tồn kho
+        const product = await getProductById(item.product._id)
+        if (!product || typeof product.stock === 'undefined' || product.stock < quantity) {
+          throw new Error(`Sản phẩm ${product.name || 'này'} chỉ còn ${product.stock || 0} đơn vị trong kho.`)
+        }
+
         await updateCartItem(itemId, quantity)
         await fetchCart()
+        toast.success("Đã cập nhật số lượng")
       } catch (error) {
         console.error("Lỗi cập nhật giỏ hàng:", error.message || error)
-        toast.error(`Không thể cập nhật giỏ hàng: ${error.message || "Lỗi không xác định"}`)
+        toast.error(error.message || "Không thể cập nhật giỏ hàng")
       } finally {
         setLoading(false)
       }
     } else {
-      // Cập nhật giỏ hàng cục bộ
       setCart((prevCart) => prevCart.map((item) => (item.id === itemId ? { ...item, quantity } : item)))
+      toast.success("Đã cập nhật số lượng")
     }
   }
 
-  // Xóa sản phẩm khỏi giỏ hàng
   const removeFromCart = async (itemId) => {
     if (isAuthenticated) {
       try {
@@ -193,18 +193,16 @@ export function CartProvider({ children }) {
         toast.success("Đã xóa sản phẩm khỏi giỏ hàng")
       } catch (error) {
         console.error("Lỗi xóa sản phẩm:", error.message || error)
-        toast.error(`Không thể xóa sản phẩm: ${error.message || "Lỗi không xác định"}`)
+        toast.error(error.message || "Không thể xóa sản phẩm")
       } finally {
         setLoading(false)
       }
     } else {
-      // Xóa khỏi giỏ hàng cục bộ
       setCart((prevCart) => prevCart.filter((item) => item.id !== itemId))
       toast.success("Đã xóa sản phẩm khỏi giỏ hàng")
     }
   }
 
-  // Tính tổng giá trị giỏ hàng
   const getCartTotal = () => {
     if (!Array.isArray(cart) || cart.length === 0) {
       return 0
@@ -216,7 +214,6 @@ export function CartProvider({ children }) {
     }, 0)
   }
 
-  // Tính tổng số lượng sản phẩm
   const getCartCount = () => {
     if (!Array.isArray(cart) || cart.length === 0) {
       return 0
@@ -224,7 +221,6 @@ export function CartProvider({ children }) {
     return cart.reduce((count, item) => count + (item.quantity || 0), 0)
   }
 
-  // Xóa toàn bộ giỏ hàng
   const clearCart = async () => {
     if (isAuthenticated) {
       try {
@@ -234,7 +230,7 @@ export function CartProvider({ children }) {
         toast.success("Đã xóa giỏ hàng")
       } catch (error) {
         console.error("Lỗi xóa giỏ hàng:", error.message || error)
-        toast.error(`Không thể xóa giỏ hàng: ${error.message || "Lỗi không xác định"}`)
+        toast.error(error.message || "Không thể xóa giỏ hàng")
       } finally {
         setLoading(false)
       }

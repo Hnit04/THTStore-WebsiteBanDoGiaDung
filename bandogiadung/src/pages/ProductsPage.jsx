@@ -1,3 +1,4 @@
+// client/src/pages/ProductsPage.jsx
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
@@ -48,7 +49,6 @@ function ProductsPage() {
   const updateFiltersAndURL = useCallback(
       (newFilters) => {
         setFilters(newFilters)
-
         const params = new URLSearchParams()
         if (newFilters.category) params.set("category", newFilters.category)
         if (newFilters.search) params.set("search", newFilters.search)
@@ -56,7 +56,6 @@ function ProductsPage() {
         if (newFilters.maxPrice < 5000000) params.set("maxPrice", newFilters.maxPrice.toString())
 
         navigate(`?${params.toString()}`, { replace: true })
-
         setRefreshTrigger((prev) => prev + 1)
 
         if (typeof refetch === "function") {
@@ -139,19 +138,31 @@ function ProductsPage() {
       return
     }
     try {
-      console.log("Processing buy now for product _id:", product._id)
+      // Kiểm tra tồn kho
+      if (typeof product.stock === 'undefined' || product.stock < 1) {
+        toast.error(`Sản phẩm ${product.name} đã hết hàng.`)
+        return
+      }
 
-      // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
-      let cartItem = cart.find(item => item.product?._id === product._id)
+      console.log("Processing buy now for product _id:", product._id)
+      let cartItem = cart.find((item) => item.product?._id === product._id)
 
       if (!cartItem) {
         console.log("Product not in cart, adding to cart with quantity 1")
         await addToCart(product._id, 1)
         console.log("Fetching updated cart")
         const updatedCart = await refreshCart()
-        cartItem = updatedCart.find(item => item.product?._id === product._id)
+        cartItem = updatedCart.find((item) => item.product?._id === product._id)
       } else {
-        console.log("Product already in cart, using existing cart item _id:", cartItem._id)
+        console.log("Product already in cart, checking quantity")
+        if (typeof product.stock === 'undefined' || product.stock < cartItem.quantity + 1) {
+          toast.error(`Sản phẩm ${product.name} chỉ còn ${product.stock || 0} đơn vị trong kho.`)
+          return
+        }
+        console.log("Adding one more item to cart")
+        await addToCart(product._id, 1)
+        const updatedCart = await refreshCart()
+        cartItem = updatedCart.find((item) => item.product?._id === product._id)
       }
 
       if (!cartItem) {
@@ -165,6 +176,27 @@ function ProductsPage() {
     } catch (error) {
       console.error("Lỗi khi mua ngay:", error)
       toast.error("Đã xảy ra lỗi khi mua ngay. Vui lòng thử lại.")
+    }
+  }
+
+  const handleAddToCart = async (productId) => {
+    const product = products.find((p) => p._id === productId)
+    if (!isAuthenticated) {
+      toast.error("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng")
+      navigate("/login?redirect=" + encodeURIComponent(window.location.pathname))
+      return
+    }
+    if (typeof product.stock === 'undefined' || product.stock < 1) {
+      toast.error(`Sản phẩm ${product.name} đã hết hàng.`)
+      return
+    }
+    try {
+      await addToCart(productId, 1)
+      await refreshCart()
+      toast.success(`Đã thêm ${product.name} vào giỏ hàng`)
+    } catch (error) {
+      console.error("Lỗi khi thêm vào giỏ hàng:", error)
+      toast.error("Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.")
     }
   }
 
@@ -331,105 +363,128 @@ function ProductsPage() {
                 </div>
             ) : viewMode === "grid" ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {products.map((product) => (
-                      <div
-                          key={product._id}
-                          className="bg-white rounded-xl shadow-xl overflow-hidden border-2 border-gray-100 transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-2 hover:border-red-200"
-                      >
-                        <div className="relative">
-                          <Link to={`/products/${product._id}`}>
-                            <div className="h-56 overflow-hidden bg-gray-50">
-                              <img
-                                  src={product.image_url ? `/${product.image_url}` : "/placeholder.svg?height=400&width=400"}
-                                  alt={product.name}
-                                  className="w-full h-full object-contain p-4 transition-transform duration-300 hover:scale-105"
-                              />
-                            </div>
-                          </Link>
-                          {/* <button
-                              onClick={() => handleToggleFavorite(product)}
-                              className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
-                          >
-                            <Heart
-                                className={`w-5 h-5 ${isFavorite(product._id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
-                            />
-                          </button> */}
-                        </div>
-                        <div className="p-5">
-                          <Link to={`/products/${product._id}`}>
-                            <h3 className="font-semibold text-lg mb-2 text-gray-800 hover:text-red-600 transition-colors line-clamp-2">
-                              {product.name}
-                            </h3>
-                          </Link>
-                          <div className="flex justify-between items-center mb-3">
-                            <div>
-                              {formatCurrency(product.price) && (
-                                  <span className="font-bold text-red-600 text-lg">
-                                    {formatCurrency(product.price)}
-                                  </span>
-                              )}
-                              {formatCurrency(product.old_price) && (
-                                  <span className="text-gray-400 text-sm line-through ml-2">
-                                    {formatCurrency(product.old_price)}
-                                  </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between gap-2">
-                            <button
-                                onClick={() => handleBuyNow(product)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all w-1/2"
-                            >
-                              Mua ngay
-                            </button>
-                            <button
-                                onClick={() => addToCart(product._id, 1)}
-                                className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-all w-1/2 flex items-center justify-center"
-                            >
-                              <ShoppingCart className="w-4 h-4 mr-1" />
-                              Thêm vào giỏ
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                  ))}
-                </div>
-            ) : (
-                <div className="space-y-6">
-                  {products.map((product) => (
-                      <div
-                          key={product._id}
-                          className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border border-gray-100"
-                      >
-                        <div className="flex flex-col md:flex-row items-stretch">
-                          <div className="w-full md:w-1/3 relative bg-gray-50">
+                  {products.map((product) => {
+                    if (!product._id || typeof product._id !== "string") {
+                      console.error("Invalid product ID:", product)
+                      return null
+                    }
+                    console.log("Product ID:", product._id, "URL:", `/products/${product._id}`)
+                    return (
+                        <div
+                            key={product._id}
+                            className="bg-white rounded-xl shadow-xl overflow-hidden border-2 border-gray-100 transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-2 hover:border-red-200"
+                        >
+                          <div className="relative">
                             <Link to={`/products/${product._id}`}>
-                              <img
-                                  src={product.image_url ? `/${product.image_url}` : "/placeholder.svg?height=400&width=400"}
-                                  alt={product.name}
-                                  className="w-full h-48 md:h-full object-contain p-4 transition-transform duration-300 hover:scale-105"
-                              />
+                              <div className="h-56 overflow-hidden bg-gray-50">
+                                <img
+                                    src={product.image_url ? `/${product.image_url}` : "/placeholder.svg?height=400&width=400"}
+                                    alt={product.name}
+                                    className="w-full h-full object-contain p-4 transition-transform duration-300 hover:scale-105"
+                                />
+                              </div>
                             </Link>
                             <button
                                 onClick={() => handleToggleFavorite(product)}
                                 className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
                             >
-                              {/* <Heart
+                              <Heart
                                   className={`w-5 h-5 ${isFavorite(product._id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
-                              /> */}
+                              />
                             </button>
                           </div>
-                          <div className="w-full md:w-2/3 p-6 flex flex-col justify-between">
-                            <div>
+                          <div className="p-5">
+                            <Link to={`/products/${product._id}`}>
+                              <h3 className="font-semibold text-lg mb-2 text-gray-800 hover:text-red-600 transition-colors line-clamp-2">
+                                {product.name}
+                              </h3>
+                            </Link>
+                            <p className="text-gray-600 text-sm mb-2">
+                              Tồn kho: {typeof product.stock !== 'undefined' ? product.stock : 'Không xác định'}
+                            </p>
+                            <div className="flex justify-between items-center mb-3">
+                              <div>
+                                {formatCurrency(product.price) && (
+                                    <span className="font-bold text-red-600 text-lg">
+                                      {formatCurrency(product.price)}
+                                    </span>
+                                )}
+                                {formatCurrency(product.old_price) && (
+                                    <span className="text-gray-400 text-sm line-through ml-2">
+                                      {formatCurrency(product.old_price)}
+                                    </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <button
+                                  onClick={() => handleBuyNow(product)}
+                                  className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all w-1/2 ${
+                                      product.stock === 0 ? "opacity-50 cursor-not-allowed" : ""
+                                  }`}
+                                  disabled={product.stock === 0}
+                              >
+                                Mua ngay
+                              </button>
+                              <button
+                                  onClick={() => handleAddToCart(product._id)}
+                                  className={`bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-all w-1/2 flex items-center justify-center ${
+                                      product.stock === 0 ? "opacity-50 cursor-not-allowed" : ""
+                                  }`}
+                                  disabled={product.stock === 0}
+                              >
+                                <ShoppingCart className="w-4 h-4 mr-1" />
+                                Thêm vào giỏ
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                    )
+                  })}
+                </div>
+            ) : (
+                <div className="space-y-6">
+                  {products.map((product) => {
+                    if (!product._id || typeof product._id !== "string") {
+                      console.error("Invalid product ID:", product)
+                      return null
+                    }
+                    console.log("Product ID:", product._id, "URL:", `/products/${product._id}`)
+                    return (
+                        <div
+                            key={product._id}
+                            className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border border-gray-100"
+                        >
+                          <div className="flex flex-col md:flex-row items-stretch">
+                            <div className="w-full md:w-1/3 relative bg-gray-50">
                               <Link to={`/products/${product._id}`}>
-                                <h3 className="font-semibold text-xl mb-2 text-gray-800 hover:text-red-600 transition-colors line-clamp-2">
-                                  {product.name}
-                                </h3>
+                                <img
+                                    src={product.image_url ? `/${product.image_url}` : "/placeholder.svg?height=400&width=400"}
+                                    alt={product.name}
+                                    className="w-full h-48 md:h-full object-contain p-4 transition-transform duration-300 hover:scale-105"
+                                />
                               </Link>
-                              <p className="text-gray-600 mb-4 line-clamp-3 text-sm">{product.description}</p>
-                              <div className="flex justify-between items-center mb-4">
-                                <div className="flex justify-between items-center mb-3">
+                              <button
+                                  onClick={() => handleToggleFavorite(product)}
+                                  className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
+                              >
+                                <Heart
+                                    className={`w-5 h-5 ${isFavorite(product._id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
+                                />
+                              </button>
+                            </div>
+                            <div className="w-full md:w-2/3 p-6 flex flex-col justify-between">
+                              <div>
+                                <Link to={`/products/${product._id}`}>
+                                  <h3 className="font-semibold text-xl mb-2 text-gray-800 hover:text-red-600 transition-colors line-clamp-2">
+                                    {product.name}
+                                  </h3>
+                                </Link>
+                                <p className="text-gray-600 mb-4 line-clamp-3 text-sm">{product.description}</p>
+                                <p className="text-gray-600 text-sm mb-2">
+                                  Tồn kho: {typeof product.stock !== 'undefined' ? product.stock : 'Không xác định'}
+                                </p>
+                                <div className="flex justify-between items-center mb-4">
                                   <div>
                                     {formatCurrency(product.price) && (
                                         <span className="font-bold text-red-600 text-lg">
@@ -444,26 +499,32 @@ function ProductsPage() {
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex justify-between gap-2">
-                              <button
-                                  onClick={() => handleBuyNow(product)}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all w-1/2"
-                              >
-                                Mua ngay
-                              </button>
-                              <button
-                                  onClick={() => addToCart(product._id, 1)}
-                                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-medium transition-all w-1/2 flex items-center justify-center"
-                              >
-                                <ShoppingCart className="w-5 h-5 mr-1" />
-                                Thêm vào giỏ
-                              </button>
+                              <div className="flex justify-between gap-2">
+                                <button
+                                    onClick={() => handleBuyNow(product)}
+                                    className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all w-1/2 ${
+                                        product.stock === 0 ? "opacity-50 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={product.stock === 0}
+                                >
+                                  Mua ngay
+                                </button>
+                                <button
+                                    onClick={() => handleAddToCart(product._id)}
+                                    className={`bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-medium transition-all w-1/2 flex items-center justify-center ${
+                                        product.stock === 0 ? "opacity-50 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={product.stock === 0}
+                                >
+                                  <ShoppingCart className="w-5 h-5 mr-1" />
+                                  Thêm vào giỏ
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                  ))}
+                    )
+                  })}
                 </div>
             )}
           </main>

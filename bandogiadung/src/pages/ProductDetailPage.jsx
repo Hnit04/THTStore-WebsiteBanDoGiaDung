@@ -23,86 +23,116 @@ function ProductDetailPage() {
   const [slideDirection, setSlideDirection] = useState("");
 
   useEffect(() => {
+    console.log("ProductDetailPage mounted with URL:", window.location.pathname);
+    console.log("Extracted _id from useParams:", _id);
+
     async function loadProduct() {
       try {
         setLoading(true);
+        console.log("Loading product with _id:", _id);
         const data = await getProductById(_id);
         if (!data) {
-          throw new Error("San pham khong ton tai");
+          throw new Error("Sản phẩm không tồn tại");
         }
-        console.log("Loaded product _id:", data._id);
+        console.log("Loaded product:", data);
         setProduct(data);
       } catch (err) {
-        setError(err.message || "Khong the tai thong tin san pham");
         console.error("Error loading product:", err);
+        setError(err.message || "Không thể tải thông tin sản phẩm");
       } finally {
         setLoading(false);
       }
     }
-    loadProduct();
-  }, [_id]);
+
+    if (_id && typeof _id === "string" && /^[0-9a-fA-F]{24}$/.test(_id)) {
+      loadProduct();
+    } else {
+      console.error("Invalid _id:", _id);
+      setError("ID sản phẩm không hợp lệ");
+      setLoading(false);
+      navigate("/products", { replace: true });
+    }
+  }, [_id, navigate]);
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
-      toast.error("Vui long dang nhap de them san pham vao gio hang");
+      toast.error("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng");
       navigate("/login?redirect=" + encodeURIComponent(window.location.pathname));
       return;
     }
     if (cartLoading) {
-      toast.error("Dang xu ly gio hang, vui long doi...");
+      toast.error("Đang xử lý giỏ hàng, vui lòng đợi...");
       return;
     }
     try {
+      // Kiểm tra tồn kho
+      if (typeof product.stock === 'undefined' || product.stock < quantity) {
+        toast.error(`Sản phẩm ${product.name} chỉ còn ${product.stock || 0} đơn vị trong kho.`);
+        return;
+      }
+
       console.log("Adding to cart, product _id:", product._id, "Quantity:", quantity);
       await addToCart(product._id, quantity);
       await refreshCart();
-      toast.success(`Da them ${quantity} ${product.name} vao gio hang`);
+      toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`);
     } catch (error) {
-      console.error("Loi khi them vao gio hang:", error);
-      toast.error("Khong the them san pham vao gio hang. Vui long thu lai.");
+      console.error("Lỗi khi thêm vào giỏ hàng:", error);
+      toast.error("Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.");
     }
   };
 
   const handleBuyNow = async () => {
     if (!isAuthenticated) {
-      toast.error("Vui long dang nhap de mua hang");
+      toast.error("Vui lòng đăng nhập để mua hàng");
       navigate("/login?redirect=" + encodeURIComponent(window.location.pathname));
       return;
     }
     if (cartLoading) {
-      toast.error("Dang xu ly gio hang, vui long doi...");
+      toast.error("Đang xử lý giỏ hàng, vui lòng đợi...");
       return;
     }
     try {
+      // Kiểm tra tồn kho
+      if (typeof product.stock === 'undefined' || product.stock < quantity) {
+        toast.error(`Sản phẩm ${product.name} chỉ còn ${product.stock || 0} đơn vị trong kho.`);
+        return;
+      }
+
       console.log("Processing buy now for product _id:", product._id, "Quantity:", quantity);
       let cartItem = cart.find((item) => item.product?._id === product._id);
+
       if (!cartItem) {
         console.log("Product not in cart, adding to cart with quantity:", quantity);
         await addToCart(product._id, quantity);
         console.log("Fetching updated cart");
         const updatedCart = await refreshCart();
-        cartItem = updatedCart.find((item) => item.product?._id === product._id && item.quantity === quantity);
+        cartItem = updatedCart.find((item) => item.product?._id === product._id);
       } else {
-        if (cartItem.quantity !== quantity) {
-          console.log("Product in cart with different quantity, updating to:", quantity);
-          await addToCart(product._id, quantity);
-          console.log("Fetching updated cart");
+        console.log("Product already in cart, checking quantity");
+        const newQuantity = quantity - (cartItem.quantity || 0);
+        if (newQuantity > 0 && (typeof product.stock === 'undefined' || product.stock < cartItem.quantity + newQuantity)) {
+          toast.error(`Sản phẩm ${product.name} chỉ còn ${product.stock || 0} đơn vị trong kho.`);
+          return;
+        }
+        if (newQuantity !== 0) {
+          console.log("Updating quantity by:", newQuantity);
+          await addToCart(product._id, newQuantity);
           const updatedCart = await refreshCart();
-          cartItem = updatedCart.find((item) => item.product?._id === product._id && item.quantity === quantity);
-        } else {
-          console.log("Product already in cart with matching quantity, using existing cart item _id:", cartItem._id);
+          cartItem = updatedCart.find((item) => item.product?._id === product._id);
         }
       }
+
       if (!cartItem) {
-        throw new Error("Khong the tim thay san pham trong gio hang sau khi them");
+        throw new Error("Không thể tìm thấy sản phẩm trong giỏ hàng sau khi thêm");
       }
+
       const params = new URLSearchParams();
       params.append("items", cartItem._id);
       console.log("Navigating to checkout with cart item _id:", cartItem._id);
       navigate(`/checkout?${params.toString()}`);
     } catch (error) {
-      console.error("Loi khi mua ngay:", error);
-      toast.error("Da xay ra loi khi mua ngay. Vui long thu lai.");
+      console.error("Lỗi khi mua ngay:", error);
+      toast.error("Đã xảy ra lỗi khi mua ngay. Vui lòng thử lại.");
     }
   };
 
@@ -128,12 +158,13 @@ function ProductDetailPage() {
   }
 
   if (error || !product) {
+    console.error("Product load error:", error, "Product ID:", _id);
     return (
         <div className="container mx-auto px-4 py-6 text-center">
-          <h1 className="text-xl font-bold text-red-600 mb-3">Loi</h1>
-          <p className="text-gray-600 mb-4">{error || "Khong tim thay san pham"}</p>
+          <h1 className="text-xl font-bold text-red-600 mb-3">Lỗi</h1>
+          <p className="text-gray-600 mb-4">{error || "Không tìm thấy sản phẩm"}</p>
           <Link to="/products" className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">
-            Quay lai danh sach san pham
+            Quay lại danh sách sản phẩm
           </Link>
         </div>
     );
@@ -166,7 +197,7 @@ function ProductDetailPage() {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          Quay lai danh sach san pham
+          Quay lại danh sách sản phẩm
         </Link>
         <div className="flex flex-col md:flex-row gap-6">
           <div className="w-full md:w-1/2 relative">
@@ -231,7 +262,7 @@ function ProductDetailPage() {
                     </svg>
                 ))}
               </div>
-              <span className="text-gray-600 text-sm">{product.review_count || 0} danh gia</span>
+              <span className="text-gray-600 text-sm">{product.review_count || 0} đánh giá</span>
             </div>
             <div>
               {formatCurrency(product.price) && (
@@ -241,13 +272,17 @@ function ProductDetailPage() {
                   <span className="text-gray-400 text-sm line-through ml-2">{formatCurrency(product.old_price)}</span>
               )}
             </div>
-            <p className="text-gray-700 mb-4 text-sm">{product.description}</p>
+            <p className="text-gray-700 mb-2 text-sm">{product.description}</p>
+            <p className="text-gray-600 mb-4 text-sm">
+              Tồn kho: {typeof product.stock !== 'undefined' ? product.stock : 'Không xác định'}
+            </p>
             <div className="mb-4">
-              <label className="block text-gray-700 mb-1 text-sm">So luong:</label>
+              <label className="block text-gray-700 mb-1 text-sm">Số lượng:</label>
               <div className="flex items-center">
                 <button
                     className="border border-gray-300 rounded-l-md px-2 py-1 text-sm"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={product.stock === 0}
                 >
                   -
                 </button>
@@ -255,6 +290,7 @@ function ProductDetailPage() {
                 <button
                     className="border border-gray-300 rounded-r-md px-2 py-1 text-sm"
                     onClick={() => setQuantity(quantity + 1)}
+                    disabled={product.stock === 0 || quantity >= product.stock}
                 >
                   +
                 </button>
@@ -266,7 +302,7 @@ function ProductDetailPage() {
                       className="w-full mb-3 bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-medium text-sm"
                       onClick={() => setIsModalOpen(true)}
                   >
-                    Cap nhat san pham
+                    Cập nhật sản phẩm
                   </button>
                   <UpdateProductModal
                       isOpen={isModalOpen}
@@ -277,18 +313,22 @@ function ProductDetailPage() {
             ) : (
                 <div className="flex flex-col sm:flex-row gap-3 mb-3">
                   <button
-                      className="w-full sm:w-1/2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md font-medium text-sm"
+                      className={`w-full sm:w-1/2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md font-medium text-sm ${
+                          product.stock === 0 || cartLoading ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                       onClick={handleBuyNow}
-                      disabled={cartLoading}
+                      disabled={product.stock === 0 || cartLoading}
                   >
                     Mua ngay
                   </button>
                   <button
-                      className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-medium text-sm"
+                      className={`w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-medium text-sm ${
+                          product.stock === 0 || cartLoading ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                       onClick={handleAddToCart}
-                      disabled={cartLoading}
+                      disabled={product.stock === 0 || cartLoading}
                   >
-                    Them vao gio hang
+                    Thêm vào giỏ hàng
                   </button>
                 </div>
             )}
@@ -308,7 +348,7 @@ function ProductDetailPage() {
                       d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
                   />
                 </svg>
-                <span>Giao hang mien phi cho don hang tu 500.000d</span>
+                <span>Giao hàng miễn phí cho đơn hàng từ 500.000đ</span>
               </div>
               <div className="flex items-center">
                 <svg
@@ -325,7 +365,7 @@ function ProductDetailPage() {
                       d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                   />
                 </svg>
-                <span>Bao hanh 12 thang chinh hang</span>
+                <span>Bảo hành 12 tháng chính hãng</span>
               </div>
             </div>
           </div>
