@@ -19,7 +19,7 @@ function ProductDetailPage() {
   const isAdmin = isAuthenticated && user && user.role === "admin";
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [slideDirection, setSlideDirection] = useState(""); // Thêm state để xác định hướng slide
+  const [slideDirection, setSlideDirection] = useState("");
 
   useEffect(() => {
     async function loadProduct() {
@@ -38,9 +38,21 @@ function ProductDetailPage() {
     loadProduct();
   }, [id]);
 
-  const handleAddToCart = () => {
-    addToCart(product, quantity);
-    // toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`);
+  const handleAddToCart = async () => {
+    if (!isAuthenticated) {
+      toast.error("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng");
+      navigate("/login?redirect=" + encodeURIComponent(window.location.pathname));
+      return;
+    }
+
+    try {
+      await addToCart(product.id, quantity); // Sử dụng product.id thay vì product
+      await refreshCart(); // Cập nhật giỏ hàng sau khi thêm
+      toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`);
+    } catch (error) {
+      console.error("Lỗi khi thêm vào giỏ hàng:", error);
+      toast.error("Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.");
+    }
   };
 
   const handleBuyNow = async () => {
@@ -56,14 +68,14 @@ function ProductDetailPage() {
 
       if (!cartItem) {
         console.log("Product not in cart, adding to cart with quantity:", quantity);
-        await addToCart(product, quantity);
+        await addToCart(product.id, quantity);
         console.log("Fetching updated cart");
         const updatedCart = await refreshCart();
         cartItem = updatedCart.find(item => item.product?.id === product.id && item.quantity === quantity);
       } else {
         if (cartItem.quantity !== quantity) {
           console.log("Product in cart with different quantity, updating to:", quantity);
-          await addToCart(product, quantity);
+          await addToCart(product.id, quantity);
           console.log("Fetching updated cart");
           const updatedCart = await refreshCart();
           cartItem = updatedCart.find(item => item.product?.id === product.id && item.quantity === quantity);
@@ -123,12 +135,12 @@ function ProductDetailPage() {
   const currentImage = allImages[currentImageIndex] ? `/${allImages[currentImageIndex]}` : "/placeholder.svg?height=400&width=400";
 
   const handlePrevImage = () => {
-    setSlideDirection("slide-right"); // Hướng slide từ trái sang phải khi nhấn Prev
+    setSlideDirection("slide-right");
     setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : allImages.length - 1));
   };
 
   const handleNextImage = () => {
-    setSlideDirection("slide-left"); // Hướng slide từ phải sang trái khi nhấn Next
+    setSlideDirection("slide-left");
     setCurrentImageIndex((prev) => (prev < allImages.length - 1 ? prev + 1 : 0));
   };
 
@@ -161,34 +173,6 @@ function ProductDetailPage() {
                               : "opacity-100"
                   }`}
               />
-              <style jsx>{`
-              @keyframes slide-left {
-                from {
-                  transform: translateX(100%);
-                  opacity: 0;
-                }
-                to {
-                  transform: translateX(0);
-                  opacity: 1;
-                }
-              }
-              @keyframes slide-right {
-                from {
-                  transform: translateX(-100%);
-                  opacity: 0;
-                }
-                to {
-                  transform: translateX(0);
-                  opacity: 1;
-                }
-              }
-              .animate-slide-left {
-                animation: slide-left 0.5s ease-in-out forwards;
-              }
-              .animate-slide-right {
-                animation: slide-right 0.5s ease-in-out forwards;
-              }
-            `}</style>
             </div>
             {allImages.length > 1 && (
                 <div className="absolute top-1/2 transform -translate-y-1/2 flex justify-between w-full px-4">
