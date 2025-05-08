@@ -178,14 +178,14 @@ function ProfilePage() {
               >
                 Thông tin cá nhân
               </button>
-              <button
+              {/* <button
                 onClick={() => setActiveTab("orders")}
                 className={`w-full text-left px-4 py-2 rounded-md ${
                   activeTab === "orders" ? "bg-red-600 text-white" : "hover:bg-gray-100"
                 }`}
               >
                 Lịch sử đơn hàng
-              </button>
+              </button> */}
               <button
                 onClick={() => setActiveTab("password")}
                 className={`w-full text-left px-4 py-2 rounded-md ${

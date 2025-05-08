@@ -38,7 +38,7 @@ function ProductDetailPage() {
 
   const handleAddToCart = () => {
     addToCart(product, quantity)
-    toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`)
+    // toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`)
   }
 
   const handleBuyNow = async () => {
@@ -163,11 +163,16 @@ function ProductDetailPage() {
               </div>
               <span className="text-gray-600 text-sm">{product.review_count || 0} đánh giá</span>
             </div>
-
-            <div className="text-xl font-bold text-red-600 mb-3">
-              {formatCurrency(product.price)}
-              {product.old_price && (
-                  <span className="text-gray-500 text-sm line-through ml-2">{formatCurrency(product.old_price)}</span>
+            <div>
+              {formatCurrency(product.price) && (
+                <span className="font-bold text-red-600 text-lg">
+                  {formatCurrency(product.price)}
+                </span>
+              )}
+              {formatCurrency(product.old_price) && (
+                <span className="text-gray-400 text-sm line-through ml-2">
+                  {formatCurrency(product.old_price)}
+                </span>
               )}
             </div>
 

@@ -1,3 +1,4 @@
+import axios from 'axios';
 const API_URL = "http://localhost:5000/api";
 
 // Hàm helper để gọi API
@@ -34,6 +35,26 @@ async function fetchAPI(endpoint, options = {}) {
     throw new Error(`Failed to fetch API at ${url}: ${error.message}`);
   }
 }
+// Đơn hàng
+export async function  getOrders ({ startDate, endDate }) {
+  const token = localStorage.getItem('token');
+  console.log('api.js - Token:', token);
+  console.log('api.js - API Request:', `${API_URL}/orders/admin?startDate=${startDate}&endDate=${endDate}`);
+  
+  try {
+    const response = await axios.get(`${API_URL}/orders/admin`, {
+      params: { startDate, endDate },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log('api.js - API Response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('api.js - API Error:', error.response?.data || error.message);
+    throw error.response?.data || error;
+  }
+};
 
 // Sản phẩm
 export async function getProducts(options = {}) {

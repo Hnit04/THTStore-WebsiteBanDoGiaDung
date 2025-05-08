@@ -21,13 +21,13 @@ function CheckoutPage() {
 
   // Khởi tạo formData với thông tin người dùng từ MongoDB
   const [formData, setFormData] = useState({
-    fullName:  "",
+    fullName: user.fullName || "",
     email: user.email || "",
-    phone: "",
-    address:  "",
-    city:  "",
-    district:  "",
-    ward:  "",
+    phone: user.phone || "",
+    address: user.address || "",
+    city: user.city || "",
+    district:user.district || "",
+    ward: user.ward || "",
     paymentMethod: "cod",
   });
 

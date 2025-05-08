@@ -353,14 +353,14 @@ function ProductsPage() {
                               />
                             </div>
                           </Link>
-                          <button
+                          {/* <button
                               onClick={() => handleToggleFavorite(product)}
                               className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
                           >
                             <Heart
                                 className={`w-5 h-5 ${isFavorite(product.id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
                             />
-                          </button>
+                          </button> */}
                         </div>
                         <div className="p-5">
                           <Link to={`/products/${product.id}`}>
@@ -369,15 +369,20 @@ function ProductsPage() {
                             </h3>
                           </Link>
                           <div className="flex justify-between items-center mb-3">
-                            <div>
-                              <span className="font-bold text-red-600 text-lg">{formatCurrency(product.price)}</span>
-                              {product.old_price && (
-                                  <span className="text-gray-400 text-sm line-through ml-2">
-                                    {formatCurrency(product.old_price)}
-                                  </span>
-                              )}
-                            </div>
-                          </div>
+                      <div>
+                        {formatCurrency(product.price) && (
+                          <span className="font-bold text-red-600 text-lg">
+                            {formatCurrency(product.price)}
+                          </span>
+                        )}
+                        {formatCurrency(product.old_price) && (
+                          <span className="text-gray-400 text-sm line-through ml-2">
+                            {formatCurrency(product.old_price)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
                           <div className="flex justify-between gap-2">
                             <button
                                 onClick={() => handleBuyNow(product)}
@@ -417,9 +422,9 @@ function ProductsPage() {
                                 onClick={() => handleToggleFavorite(product)}
                                 className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
                             >
-                              <Heart
+                              {/* <Heart
                                   className={`w-5 h-5 ${isFavorite(product.id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
-                              />
+                              /> */}
                             </button>
                           </div>
                           <div className="w-full md:w-2/3 p-6 flex flex-col justify-between">
@@ -431,14 +436,20 @@ function ProductsPage() {
                               </Link>
                               <p className="text-gray-600 mb-4 line-clamp-3 text-sm">{product.description}</p>
                               <div className="flex justify-between items-center mb-4">
-                                <div>
-                                  <span className="font-bold text-red-600 text-xl">{formatCurrency(product.price)}</span>
-                                  {product.old_price && (
-                                      <span className="text-gray-400 text-sm line-through ml-2">
-                                        {formatCurrency(product.old_price)}
-                                      </span>
-                                  )}
-                                </div>
+                              <div className="flex justify-between items-center mb-3">
+                            <div>
+                              {formatCurrency(product.price) && (
+                                <span className="font-bold text-red-600 text-lg">
+                                  {formatCurrency(product.price)}
+                                </span>
+                              )}
+                              {formatCurrency(product.old_price) && (
+                                <span className="text-gray-400 text-sm line-through ml-2">
+                                  {formatCurrency(product.old_price)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                               </div>
                             </div>
                             <div className="flex justify-between gap-2">

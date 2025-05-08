@@ -120,8 +120,9 @@ export function CartProvider({ children }) {
     if (!Array.isArray(cart)) {
       return 0;
     }
-    return cart.reduce((count, item) => count + item.quantity, 0);
+    return cart.length;
   };
+  
 
   const clearCart = async () => {
     if (!isAuthenticated) {
