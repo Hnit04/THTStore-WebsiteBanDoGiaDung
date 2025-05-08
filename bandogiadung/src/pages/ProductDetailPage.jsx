@@ -1,90 +1,90 @@
-import { useState, useEffect } from "react"
-import { useParams, Link, useNavigate } from "react-router-dom"
-import { getProductById } from "../lib/api.js"
-import { formatCurrency } from "../lib/utils.js"
-import { useCart } from "../contexts/CartContext.jsx"
-import { useAuth } from "../contexts/AuthContext.jsx"
-import UpdateProductModal from "../components/ui/UpdateProductModal.jsx"
-import toast from "react-hot-toast"
+import { useState, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { getProductById } from "../lib/api.js";
+import { formatCurrency } from "../lib/utils.js";
+import { useCart } from "../contexts/CartContext.jsx";
+import { useAuth } from "../contexts/AuthContext.jsx";
+import UpdateProductModal from "../components/ui/UpdateProductModal.jsx";
+import toast from "react-hot-toast";
 
 function ProductDetailPage() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [product, setProduct] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [quantity, setQuantity] = useState(1)
-  const { addToCart, cart, refreshCart } = useCart()
-  const { user, isAuthenticated } = useAuth()
-  const isAdmin = isAuthenticated && user && user.role === "admin"
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const { addToCart, cart, refreshCart } = useCart();
+  const { user, isAuthenticated } = useAuth();
+  const isAdmin = isAuthenticated && user && user.role === "admin";
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [slideDirection, setSlideDirection] = useState(""); // Thêm state để xác định hướng slide
 
   useEffect(() => {
     async function loadProduct() {
       try {
-        setLoading(true)
-        const data = await getProductById(id)
-        setProduct(data)
+        setLoading(true);
+        const data = await getProductById(id);
+        setProduct(data);
       } catch (err) {
-        setError(err.message || "Không thể tải thông tin sản phẩm")
-        console.error("Error loading product:", err)
+        setError(err.message || "Không thể tải thông tin sản phẩm");
+        console.error("Error loading product:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    loadProduct()
-  }, [id])
+    loadProduct();
+  }, [id]);
 
   const handleAddToCart = () => {
-    addToCart(product, quantity)
-    // toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`)
-  }
+    addToCart(product, quantity);
+    // toast.success(`Đã thêm ${quantity} ${product.name} vào giỏ hàng`);
+  };
 
   const handleBuyNow = async () => {
     if (!isAuthenticated) {
-      toast.error("Vui lòng đăng nhập để mua hàng")
-      navigate("/login?redirect=" + encodeURIComponent(window.location.pathname))
-      return
+      toast.error("Vui lòng đăng nhập để mua hàng");
+      navigate("/login?redirect=" + encodeURIComponent(window.location.pathname));
+      return;
     }
     try {
-      console.log("Processing buy now for product ID:", product.id, "Quantity:", quantity)
+      console.log("Processing buy now for product ID:", product.id, "Quantity:", quantity);
 
-      // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
-      let cartItem = cart.find(item => item.product?.id === product.id)
+      let cartItem = cart.find(item => item.product?.id === product.id);
 
       if (!cartItem) {
-        console.log("Product not in cart, adding to cart with quantity:", quantity)
-        await addToCart(product, quantity)
-        console.log("Fetching updated cart")
-        const updatedCart = await refreshCart()
-        cartItem = updatedCart.find(item => item.product?.id === product.id && item.quantity === quantity)
+        console.log("Product not in cart, adding to cart with quantity:", quantity);
+        await addToCart(product, quantity);
+        console.log("Fetching updated cart");
+        const updatedCart = await refreshCart();
+        cartItem = updatedCart.find(item => item.product?.id === product.id && item.quantity === quantity);
       } else {
-        // Nếu sản phẩm đã có trong giỏ hàng nhưng số lượng khác, cập nhật số lượng
         if (cartItem.quantity !== quantity) {
-          console.log("Product in cart with different quantity, updating to:", quantity)
-          await addToCart(product, quantity)
-          console.log("Fetching updated cart")
-          const updatedCart = await refreshCart()
-          cartItem = updatedCart.find(item => item.product?.id === product.id && item.quantity === quantity)
+          console.log("Product in cart with different quantity, updating to:", quantity);
+          await addToCart(product, quantity);
+          console.log("Fetching updated cart");
+          const updatedCart = await refreshCart();
+          cartItem = updatedCart.find(item => item.product?.id === product.id && item.quantity === quantity);
         } else {
-          console.log("Product already in cart with matching quantity, using existing cart item ID:", cartItem._id)
+          console.log("Product already in cart with matching quantity, using existing cart item ID:", cartItem._id);
         }
       }
 
       if (!cartItem) {
-        throw new Error("Không thể tìm thấy sản phẩm trong giỏ hàng sau khi thêm")
+        throw new Error("Không thể tìm thấy sản phẩm trong giỏ hàng sau khi thêm");
       }
 
-      const params = new URLSearchParams()
-      params.append("items", cartItem._id)
-      console.log("Navigating to checkout with cart item ID:", cartItem._id)
-      navigate(`/checkout?${params.toString()}`)
+      const params = new URLSearchParams();
+      params.append("items", cartItem._id);
+      console.log("Navigating to checkout with cart item ID:", cartItem._id);
+      navigate(`/checkout?${params.toString()}`);
     } catch (error) {
-      console.error("Lỗi khi mua ngay:", error)
-      toast.error("Đã xảy ra lỗi khi mua ngay. Vui lòng thử lại.")
+      console.error("Lỗi khi mua ngay:", error);
+      toast.error("Đã xảy ra lỗi khi mua ngay. Vui lòng thử lại.");
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -104,7 +104,7 @@ function ProductDetailPage() {
             </div>
           </div>
         </div>
-    )
+    );
   }
 
   if (error || !product) {
@@ -116,8 +116,21 @@ function ProductDetailPage() {
             Quay lại danh sách sản phẩm
           </Link>
         </div>
-    )
+    );
   }
+
+  const allImages = [product.image_url, ...(product.images || [])].filter(url => url);
+  const currentImage = allImages[currentImageIndex] ? `/${allImages[currentImageIndex]}` : "/placeholder.svg?height=400&width=400";
+
+  const handlePrevImage = () => {
+    setSlideDirection("slide-right"); // Hướng slide từ trái sang phải khi nhấn Prev
+    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : allImages.length - 1));
+  };
+
+  const handleNextImage = () => {
+    setSlideDirection("slide-left"); // Hướng slide từ phải sang trái khi nhấn Next
+    setCurrentImageIndex((prev) => (prev < allImages.length - 1 ? prev + 1 : 0));
+  };
 
   return (
       <div className="container mx-auto px-4 py-6">
@@ -135,14 +148,80 @@ function ProductDetailPage() {
         </Link>
 
         <div className="flex flex-col md:flex-row gap-6">
-          <div className="w-full md:w-1/2">
-            <div className="bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
+          <div className="w-full md:w-1/2 relative">
+            <div className="bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 relative">
               <img
-                  src={"/" + product.image_url || "/placeholder.svg?height=400&width=400"}
+                  src={currentImage}
                   alt={product.name}
-                  className="w-full h-64 object-contain p-4"
+                  className={`w-full h-64 object-contain p-4 transition-all duration-500 ease-in-out ${
+                      slideDirection === "slide-left"
+                          ? "animate-slide-left"
+                          : slideDirection === "slide-right"
+                              ? "animate-slide-right"
+                              : "opacity-100"
+                  }`}
               />
+              <style jsx>{`
+              @keyframes slide-left {
+                from {
+                  transform: translateX(100%);
+                  opacity: 0;
+                }
+                to {
+                  transform: translateX(0);
+                  opacity: 1;
+                }
+              }
+              @keyframes slide-right {
+                from {
+                  transform: translateX(-100%);
+                  opacity: 0;
+                }
+                to {
+                  transform: translateX(0);
+                  opacity: 1;
+                }
+              }
+              .animate-slide-left {
+                animation: slide-left 0.5s ease-in-out forwards;
+              }
+              .animate-slide-right {
+                animation: slide-right 0.5s ease-in-out forwards;
+              }
+            `}</style>
             </div>
+            {allImages.length > 1 && (
+                <div className="absolute top-1/2 transform -translate-y-1/2 flex justify-between w-full px-4">
+                  <button
+                      onClick={handlePrevImage}
+                      className="bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition-all"
+                  >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                      onClick={handleNextImage}
+                      className="bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition-all"
+                  >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+            )}
           </div>
 
           <div className="w-full md:w-1/2">
@@ -165,14 +244,14 @@ function ProductDetailPage() {
             </div>
             <div>
               {formatCurrency(product.price) && (
-                <span className="font-bold text-red-600 text-lg">
-                  {formatCurrency(product.price)}
-                </span>
+                  <span className="font-bold text-red-600 text-lg">
+                {formatCurrency(product.price)}
+              </span>
               )}
               {formatCurrency(product.old_price) && (
-                <span className="text-gray-400 text-sm line-through ml-2">
-                  {formatCurrency(product.old_price)}
-                </span>
+                  <span className="text-gray-400 text-sm line-through ml-2">
+                {formatCurrency(product.old_price)}
+              </span>
               )}
             </div>
 
@@ -267,7 +346,7 @@ function ProductDetailPage() {
           </div>
         </div>
       </div>
-  )
+  );
 }
 
-export default ProductDetailPage
+export default ProductDetailPage;
