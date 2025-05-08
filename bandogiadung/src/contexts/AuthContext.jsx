@@ -1,4 +1,5 @@
 import { createContext, useState, useContext, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser, verifyEmail as apiVerifyEmail, forgotPassword as apiForgotPassword, verifyResetCode as apiVerifyResetCode, resetPassword as apiResetPassword } from "../lib/api.js";
 import toast from "react-hot-toast";
 
@@ -8,6 +9,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -17,6 +19,7 @@ export function AuthProvider({ children }) {
           const userData = await getCurrentUser();
           setUser((prev) => {
             if (JSON.stringify(prev) !== JSON.stringify(userData)) {
+              console.log("Check auth user:", userData);
               return userData;
             }
             return prev;
@@ -41,10 +44,18 @@ export function AuthProvider({ children }) {
       const data = await apiLogin(email, password);
       setUser((prev) => {
         if (JSON.stringify(prev) !== JSON.stringify(data.user)) {
+          console.log("Login user:", data.user);
           return data.user;
         }
         return prev;
       });
+      // Chuyển hướng dựa trên vai trò sau khi đăng nhập
+      if (data.user.role === "admin") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
+      toast.success("Đăng nhập thành công");
       return data;
     } catch (err) {
       console.error("Login error:", err);
@@ -121,7 +132,7 @@ export function AuthProvider({ children }) {
       setLoading(true);
       setError(null);
       console.log(`Verifying reset code for ${email}: ${resetCode}`);
-      const data = await apiVerifyResetCode(email, resetCode);
+      const data = await verifyResetCode(email, resetCode);
       console.log(`Reset code verified for ${email}`, data);
       return data;
     } catch (err) {
@@ -158,7 +169,9 @@ export function AuthProvider({ children }) {
       console.log("Logging out");
       await apiLogout();
       setUser(null);
+      localStorage.removeItem("token");
       toast.success("Đăng xuất thành công");
+      navigate("/login", { replace: true });
     } catch (err) {
       console.error("Logout error:", err);
       toast.error("Đăng xuất thất bại");
@@ -169,20 +182,20 @@ export function AuthProvider({ children }) {
   };
 
   const value = useMemo(
-      () => ({
-        user,
-        loading,
-        error,
-        login,
-        register,
-        verifyEmail,
-        forgotPassword,
-        verifyResetCode,
-        resetPassword,
-        logout,
-        isAuthenticated: !!user,
-      }),
-      [user, loading, error]
+    () => ({
+      user,
+      loading,
+      error,
+      login,
+      register,
+      verifyEmail,
+      forgotPassword,
+      verifyResetCode,
+      resetPassword,
+      logout,
+      isAuthenticated: !!user,
+    }),
+    [user, loading, error]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

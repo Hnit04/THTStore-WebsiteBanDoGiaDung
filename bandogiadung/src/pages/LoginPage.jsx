@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import toast from "react-hot-toast";
 
@@ -16,12 +16,6 @@ function LoginPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const { login, forgotPassword, verifyResetCode, resetPassword, error } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // Lấy redirect URL từ query params (nếu có)
-  const searchParams = new URLSearchParams(location.search);
-  const redirectTo = searchParams.get("redirect") || "/";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,8 +28,7 @@ function LoginPage() {
     try {
       setIsSubmitting(true);
       await login(email, password);
-      toast.success("Đăng nhập thành công");
-      navigate(redirectTo);
+      // Chuyển hướng được xử lý trong AuthContext
     } catch (err) {
       toast.error(err.message || "Đã xảy ra lỗi, vui lòng thử lại");
     } finally {
@@ -110,7 +103,6 @@ function LoginPage() {
       console.log("Password reset successful:", response);
       toast.success("Đặt lại mật khẩu thành công");
       setShowNewPassword(false);
-      navigate("/login");
     } catch (err) {
       console.error("Password reset failed:", err);
       toast.error(err.message || "Đặt lại mật khẩu thất bại");
@@ -210,75 +202,86 @@ function LoginPage() {
                     />
                   </div>
 
-                  {error && <div className="text-red-600 text-sm">{error}</div>}
 
-                  <button
-                      type="submit"
-                      className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-medium"
-                      disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Đang gửi..." : "Gửi mã đặt lại"}
-                  </button>
-                </form>
-            ) : showResetCode ? (
-                <form onSubmit={handleVerifyResetCode} className="space-y-4">
-                  <div>
-                    <label htmlFor="resetCode" className="block text-gray-700 mb-2">
-                      Mã đặt lại
-                    </label>
-                    <input
-                        id="resetCode"
-                        type="text"
-                        placeholder="Nhập mã đặt lại"
-                        className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent"
-                        value={resetCode}
-                        onChange={(e) => setResetCode(e.target.value)}
-                        required
-                    />
-                  </div>
+              {error && <div className="text-red-600 text-sm">{error}</div>}
 
-                  {error && <div className="text-red-600 text-sm">{error}</div>}
+              <button
+                type="submit"
+                className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-medium"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
+              </button>
+            </form>
+          ) : showForgotPassword ? (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="your.email@example.com"
+                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
 
-                  <button
-                      type="submit"
-                      className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-medium"
-                      disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Đang xác nhận..." : "Xác nhận mã"}
-                  </button>
-                </form>
-            ) : showNewPassword ? (
-                <form onSubmit={handleResetPassword} className="space-y-4">
-                  <div>
-                    <label htmlFor="newPassword" className="block text-gray-700 mb-2">
-                      Mật khẩu mới
-                    </label>
-                    <input
-                        id="newPassword"
-                        type="password"
-                        className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                    />
-                  </div>
+              {error && <div className="text-red-600 text-sm">{error}</div>}
 
-                  <div>
-                    <label htmlFor="confirmNewPassword" className="block text-gray-700 mb-2">
-                      Xác nhận mật khẩu mới
-                    </label>
-                    <input
-                        id="confirmNewPassword"
-                        type="password"
-                        className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent"
-                        value={confirmNewPassword}
-                        onChange={(e) => setConfirmNewPassword(e.target.value)}
-                        required
-                    />
-                  </div>
+              <button
+                type="submit"
+                className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-medium"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Đang gửi..." : "Gửi mã đặt lại"}
+              </button>
+            </form>
+          ) : showResetCode ? (
+            <form onSubmit={handleVerifyResetCode} className="space-y-4">
+              <div>
+                <label htmlFor="resetCode" className="block text-gray-700 mb-2">
+                  Mã đặt lại
+                </label>
+                <input
+                  id="resetCode"
+                  type="text"
+                  placeholder="Nhập mã đặt lại"
+                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value)}
+                  required
+                />
+              </div>
 
-                  {error && <div className="text-red-600 text-sm">{error}</div>}
+              {error && <div className="text-red-600 text-sm">{error}</div>}
 
+              <button
+                type="submit"
+                className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-medium"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Đang xác nhận..." : "Xác nhận mã"}
+              </button>
+            </form>
+          ) : showNewPassword ? (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label htmlFor="newPassword" className="block text-gray-700 mb-2">
+                  Mật khẩu mới
+                </label>
+                <input
+                  id="newPassword"
+                  type="password"
+                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                />
+              </div>
                   <button
                       type="submit"
                       className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-medium"
@@ -290,31 +293,43 @@ function LoginPage() {
             ) : null}
           </div>
 
-          <div className="px-6 py-4 bg-gray-50 border-t">
-            <p className="text-sm text-gray-600 text-center">
-              {showForgotPassword || showResetCode || showNewPassword ? (
-                  <button
-                      onClick={() => {
-                        setShowForgotPassword(false);
-                        setShowResetCode(false);
-                        setShowNewPassword(false);
-                      }}
-                      className="text-red-600 hover:text-red-800 font-medium"
-                  >
-                    Quay lại đăng nhập
-                  </button>
-              ) : (
-                  <>
-                    Chưa có tài khoản?{" "}
-                    <Link to="/register" className="text-red-600 hover:text-red-800 font-medium">
-                      Đăng ký ngay
-                    </Link>
-                  </>
-              )}
-            </p>
-          </div>
+              <button
+                type="submit"
+                className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-medium"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Đang đặt lại..." : "Đặt lại mật khẩu"}
+              </button>
+            </form>
+          ) : null}
+
+        </div>
+
+        <div className="px-6 py-4 bg-gray-50 border-t">
+          <p className="text-sm text-gray-600 text-center">
+            {showForgotPassword || showResetCode || showNewPassword ? (
+              <button
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setShowResetCode(false);
+                  setShowNewPassword(false);
+                }}
+                className="text-red-600 hover:text-red-800 font-medium"
+              >
+                Quay lại đăng nhập
+              </button>
+            ) : (
+              <>
+                Chưa có tài khoản?{" "}
+                <Link to="/register" className="text-red-600 hover:text-red-800 font-medium">
+                  Đăng ký ngay
+                </Link>
+              </>
+            )}
+          </p>
         </div>
       </div>
+    </div>
   );
 }
 
