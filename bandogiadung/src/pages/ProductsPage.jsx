@@ -110,12 +110,6 @@ function ProductsPage() {
       maxPrice: priceRange[1],
     }
     updateFiltersAndURL(newFilters)
-    const params = new URLSearchParams()
-    if (filters.category) params.set("category", filters.category)
-    if (filters.search) params.set("search", filters.search)
-    if (priceRange[0] > 0) params.set("minPrice", priceRange[0].toString())
-    if (priceRange[1] < 5000000) params.set("maxPrice", priceRange[1].toString())
-    window.location.href = `?${params.toString()}`
   }
 
   const handleSearchChange = (e) => {
@@ -136,7 +130,6 @@ function ProductsPage() {
     setPriceRange([0, 5000000])
     setFilters(newFilters)
     navigate("", { replace: true })
-    window.location.href = window.location.pathname
   }
 
   const handleBuyNow = async (product) => {
@@ -146,19 +139,19 @@ function ProductsPage() {
       return
     }
     try {
-      console.log("Processing buy now for product ID:", product.id)
+      console.log("Processing buy now for product _id:", product._id)
 
       // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
-      let cartItem = cart.find(item => item.product?.id === product.id)
+      let cartItem = cart.find(item => item.product?._id === product._id)
 
       if (!cartItem) {
         console.log("Product not in cart, adding to cart with quantity 1")
-        await addToCart(product, 1)
+        await addToCart(product._id, 1)
         console.log("Fetching updated cart")
         const updatedCart = await refreshCart()
-        cartItem = updatedCart.find(item => item.product?.id === product.id)
+        cartItem = updatedCart.find(item => item.product?._id === product._id)
       } else {
-        console.log("Product already in cart, using existing cart item ID:", cartItem._id)
+        console.log("Product already in cart, using existing cart item _id:", cartItem._id)
       }
 
       if (!cartItem) {
@@ -167,7 +160,7 @@ function ProductsPage() {
 
       const params = new URLSearchParams()
       params.append("items", cartItem._id)
-      console.log("Navigating to checkout with cart item ID:", cartItem._id)
+      console.log("Navigating to checkout with cart item _id:", cartItem._id)
       navigate(`/checkout?${params.toString()}`)
     } catch (error) {
       console.error("Lỗi khi mua ngay:", error)
@@ -212,15 +205,15 @@ function ProductsPage() {
               ) : (
                   <div className="space-y-3">
                     {categories.map((category) => (
-                        <div key={category.id} className="flex items-center">
+                        <div key={category._id} className="flex items-center">
                           <input
                               type="checkbox"
-                              id={`category-${category.id}`}
-                              checked={filters.category === category.id}
-                              onChange={() => handleCategoryChange(category.id)}
+                              id={`category-${category._id}`}
+                              checked={filters.category === category._id}
+                              onChange={() => handleCategoryChange(category._id)}
                               className="mr-2 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
                           />
-                          <label htmlFor={`category-${category.id}`} className="text-gray-600">
+                          <label htmlFor={`category-${category._id}`} className="text-gray-600">
                             {category.name}
                           </label>
                         </div>
@@ -340,11 +333,11 @@ function ProductsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {products.map((product) => (
                       <div
-                          key={product.id}
+                          key={product._id}
                           className="bg-white rounded-xl shadow-xl overflow-hidden border-2 border-gray-100 transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-2 hover:border-red-200"
                       >
                         <div className="relative">
-                          <Link to={`/products/${product.id}`}>
+                          <Link to={`/products/${product._id}`}>
                             <div className="h-56 overflow-hidden bg-gray-50">
                               <img
                                   src={product.image_url ? `/${product.image_url}` : "/placeholder.svg?height=400&width=400"}
@@ -358,30 +351,30 @@ function ProductsPage() {
                               className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
                           >
                             <Heart
-                                className={`w-5 h-5 ${isFavorite(product.id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
+                                className={`w-5 h-5 ${isFavorite(product._id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
                             />
                           </button> */}
                         </div>
                         <div className="p-5">
-                          <Link to={`/products/${product.id}`}>
+                          <Link to={`/products/${product._id}`}>
                             <h3 className="font-semibold text-lg mb-2 text-gray-800 hover:text-red-600 transition-colors line-clamp-2">
                               {product.name}
                             </h3>
                           </Link>
                           <div className="flex justify-between items-center mb-3">
-                      <div>
-                        {formatCurrency(product.price) && (
-                          <span className="font-bold text-red-600 text-lg">
-                            {formatCurrency(product.price)}
-                          </span>
-                        )}
-                        {formatCurrency(product.old_price) && (
-                          <span className="text-gray-400 text-sm line-through ml-2">
-                            {formatCurrency(product.old_price)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                            <div>
+                              {formatCurrency(product.price) && (
+                                  <span className="font-bold text-red-600 text-lg">
+                                    {formatCurrency(product.price)}
+                                  </span>
+                              )}
+                              {formatCurrency(product.old_price) && (
+                                  <span className="text-gray-400 text-sm line-through ml-2">
+                                    {formatCurrency(product.old_price)}
+                                  </span>
+                              )}
+                            </div>
+                          </div>
 
                           <div className="flex justify-between gap-2">
                             <button
@@ -391,7 +384,7 @@ function ProductsPage() {
                               Mua ngay
                             </button>
                             <button
-                                onClick={() => addToCart(product, 1)}
+                                onClick={() => addToCart(product._id, 1)}
                                 className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-all w-1/2 flex items-center justify-center"
                             >
                               <ShoppingCart className="w-4 h-4 mr-1" />
@@ -406,12 +399,12 @@ function ProductsPage() {
                 <div className="space-y-6">
                   {products.map((product) => (
                       <div
-                          key={product.id}
+                          key={product._id}
                           className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border border-gray-100"
                       >
                         <div className="flex flex-col md:flex-row items-stretch">
                           <div className="w-full md:w-1/3 relative bg-gray-50">
-                            <Link to={`/products/${product.id}`}>
+                            <Link to={`/products/${product._id}`}>
                               <img
                                   src={product.image_url ? `/${product.image_url}` : "/placeholder.svg?height=400&width=400"}
                                   alt={product.name}
@@ -423,33 +416,33 @@ function ProductsPage() {
                                 className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
                             >
                               {/* <Heart
-                                  className={`w-5 h-5 ${isFavorite(product.id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
+                                  className={`w-5 h-5 ${isFavorite(product._id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
                               /> */}
                             </button>
                           </div>
                           <div className="w-full md:w-2/3 p-6 flex flex-col justify-between">
                             <div>
-                              <Link to={`/products/${product.id}`}>
+                              <Link to={`/products/${product._id}`}>
                                 <h3 className="font-semibold text-xl mb-2 text-gray-800 hover:text-red-600 transition-colors line-clamp-2">
                                   {product.name}
                                 </h3>
                               </Link>
                               <p className="text-gray-600 mb-4 line-clamp-3 text-sm">{product.description}</p>
                               <div className="flex justify-between items-center mb-4">
-                              <div className="flex justify-between items-center mb-3">
-                            <div>
-                              {formatCurrency(product.price) && (
-                                <span className="font-bold text-red-600 text-lg">
-                                  {formatCurrency(product.price)}
-                                </span>
-                              )}
-                              {formatCurrency(product.old_price) && (
-                                <span className="text-gray-400 text-sm line-through ml-2">
-                                  {formatCurrency(product.old_price)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                                <div className="flex justify-between items-center mb-3">
+                                  <div>
+                                    {formatCurrency(product.price) && (
+                                        <span className="font-bold text-red-600 text-lg">
+                                          {formatCurrency(product.price)}
+                                        </span>
+                                    )}
+                                    {formatCurrency(product.old_price) && (
+                                        <span className="text-gray-400 text-sm line-through ml-2">
+                                          {formatCurrency(product.old_price)}
+                                        </span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                             <div className="flex justify-between gap-2">
@@ -460,7 +453,7 @@ function ProductsPage() {
                                 Mua ngay
                               </button>
                               <button
-                                  onClick={() => addToCart(product, 1)}
+                                  onClick={() => addToCart(product._id, 1)}
                                   className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-medium transition-all w-1/2 flex items-center justify-center"
                               >
                                 <ShoppingCart className="w-5 h-5 mr-1" />

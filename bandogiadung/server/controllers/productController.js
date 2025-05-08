@@ -11,7 +11,7 @@ exports.getProducts = async (req, res) => {
 
     const filter = {};
 
-    // Lọc theo category_id (ví dụ: ?category=Kitchen)
+    // Lọc theo category_id
     if (req.query.category) {
       filter.category_id = req.query.category;
     }
@@ -49,20 +49,18 @@ exports.getProducts = async (req, res) => {
 };
 
 // @desc    Get single product
-// @route   GET /api/products/:id
+// @route   GET /api/products/:_id
 // @access  Public
 exports.getProduct = async (req, res, next) => {
   try {
-    const product = await Product.findOne({ id: req.params.id });
-
+    const product = await Product.findById(req.params._id);
     if (!product) {
       return res.status(404).json({
         success: false,
         error: "Không tìm thấy sản phẩm",
       });
     }
-    console.log("Product found:", product.image_url); // Log the found product
-
+    console.log("Product found:", product._id);
     res.status(200).json({
       success: true,
       data: product,
@@ -77,16 +75,8 @@ exports.getProduct = async (req, res, next) => {
 // @access  Private
 exports.createProduct = async (req, res, next) => {
   try {
-    // Add user to req.body
-    req.body.user = req.user.id;
-
-    // Handle images array if provided
-    if (req.body.images && !Array.isArray(req.body.images)) {
-      req.body.images = [req.body.images];
-    }
-
+    req.body.user = req.user._id;
     const product = await Product.create(req.body);
-
     res.status(201).json({
       success: true,
       data: product,
@@ -97,29 +87,21 @@ exports.createProduct = async (req, res, next) => {
 };
 
 // @desc    Update product
-// @route   PUT /api/products/:id
+// @route   PUT /api/products/:_id
 // @access  Private
 exports.updateProduct = async (req, res, next) => {
   try {
-    let product = await Product.findById(req.params.id);
-
+    let product = await Product.findById(req.params._id);
     if (!product) {
       return res.status(404).json({
         success: false,
         error: "Không tìm thấy sản phẩm",
       });
     }
-
-    // Handle images array if provided
-    if (req.body.images && !Array.isArray(req.body.images)) {
-      req.body.images = [req.body.images];
-    }
-
-    product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+    product = await Product.findByIdAndUpdate(req.params._id, req.body, {
       new: true,
       runValidators: true,
     });
-
     res.status(200).json({
       success: true,
       data: product,
@@ -130,21 +112,18 @@ exports.updateProduct = async (req, res, next) => {
 };
 
 // @desc    Delete product
-// @route   DELETE /api/products/:id
+// @route   DELETE /api/products/:_id
 // @access  Private
 exports.deleteProduct = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
-
+    const product = await Product.findById(req.params._id);
     if (!product) {
       return res.status(404).json({
         success: false,
         error: "Không tìm thấy sản phẩm",
       });
     }
-
-    await product.remove();
-
+    await product.deleteOne();
     res.status(200).json({
       success: true,
       data: {},
