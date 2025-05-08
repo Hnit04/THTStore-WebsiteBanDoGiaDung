@@ -102,6 +102,7 @@ function App() {
         <Route path="customers" element={<CustomerPage />} />
         <Route path="orders" element={<OrderPage />} />
         <Route path="statistics" element={<StatisticsPage />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
     </Routes>
   );
