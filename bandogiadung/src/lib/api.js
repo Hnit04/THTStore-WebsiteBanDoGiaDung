@@ -55,7 +55,29 @@ export async function  getOrders ({ startDate, endDate }) {
     throw error.response?.data || error;
   }
 };
+export const getAdminOrders = async (startDate, endDate) => {
+  const response = await fetch(`/api/orders/orderCustomer?startDate=${startDate}&endDate=${endDate}`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch orders");
+  }
+  return response.json();
+};
 
+export const getTotalProducts = async () => {
+  const response = await fetch("/api/products?limit=1", {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch products");
+  }
+  return response.json();
+};
 // Sản phẩm
 export async function getProducts(options = {}) {
   const queryParams = new URLSearchParams();
