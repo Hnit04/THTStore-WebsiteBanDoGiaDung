@@ -1,3 +1,4 @@
+// client/src/pages/CartPage.jsx
 "use client";
 
 import { Link } from "react-router-dom";
@@ -5,20 +6,27 @@ import { useState, useEffect } from "react";
 import { useCart } from "../contexts/CartContext.jsx";
 import { formatCurrency } from "../lib/utils.js";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import toast from "react-hot-toast";
 
 function CartPage() {
   const { cart, loading, updateQuantity, removeFromCart, getCartTotal } = useCart();
   const { isAuthenticated } = useAuth();
   const [selectedItems, setSelectedItems] = useState(new Set());
+  const [inputQuantities, setInputQuantities] = useState({});
 
-  // Debug logs
   useEffect(() => {
     console.log("Current cart items:", cart.map(item => ({
-      cartItemId: item._id || item.id,
-      productId: item.product._id || item.product.id,
+      cartItemId: item._id,
+      productId: item.product._id,
       name: item.product.name
     })));
     console.log("Currently selected items:", Array.from(selectedItems));
+    // Khởi tạo inputQuantities dựa trên cart
+    const initialQuantities = cart.reduce((acc, item) => ({
+      ...acc,
+      [item._id]: item.quantity.toString()
+    }), {});
+    setInputQuantities(initialQuantities);
   }, [cart, selectedItems]);
 
   const subtotal = getCartTotal();
@@ -78,7 +86,7 @@ function CartPage() {
   const handleSelectAll = (e) => {
     const isChecked = e.target.checked;
     if (isChecked) {
-      const allItemIds = new Set(cart.map((item) => item._id || item.id));
+      const allItemIds = new Set(cart.map((item) => item._id));
       setSelectedItems(allItemIds);
       console.log("Selected all items:", Array.from(allItemIds));
     } else {
@@ -87,28 +95,68 @@ function CartPage() {
     }
   };
 
-  // Get selected cart items and calculate totals
-  const selectedCartItems = cart.filter((item) => selectedItems.has(item._id || item.id));
+  const handleQuantityInputChange = (itemId, value) => {
+    setInputQuantities(prev => ({
+      ...prev,
+      [itemId]: value
+    }));
+  };
+
+  const handleQuantityInputBlur = async (itemId, item) => {
+    const value = inputQuantities[itemId];
+    const parsedQuantity = parseInt(value, 10);
+
+    if (isNaN(parsedQuantity) || parsedQuantity < 1) {
+      toast.error("Số lượng phải lớn hơn 0");
+      setInputQuantities(prev => ({
+        ...prev,
+        [itemId]: item.quantity.toString()
+      }));
+      return;
+    }
+
+    if (parsedQuantity > item.product.stock) {
+      toast.error(`Sản phẩm ${item.product.name} chỉ còn ${item.product.stock} đơn vị trong kho`);
+      setInputQuantities(prev => ({
+        ...prev,
+        [itemId]: item.quantity.toString()
+      }));
+      return;
+    }
+
+    try {
+      await updateQuantity(itemId, parsedQuantity);
+      setInputQuantities(prev => ({
+        ...prev,
+        [itemId]: parsedQuantity.toString()
+      }));
+    } catch (error) {
+      toast.error(error.message || "Không thể cập nhật số lượng");
+      setInputQuantities(prev => ({
+        ...prev,
+        [itemId]: item.quantity.toString()
+      }));
+    }
+  };
+
+  const handleQuantityInputKeyPress = (e, itemId, item) => {
+    if (e.key === 'Enter') {
+      handleQuantityInputBlur(itemId, item);
+    }
+  };
+
+  const selectedCartItems = cart.filter((item) => selectedItems.has(item._id));
   const selectedSubtotal = selectedCartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const selectedShipping = selectedSubtotal > 500000 ? 0 : 30000;
   const selectedTotal = selectedSubtotal + selectedShipping;
 
-  // Generate checkout link with CART ITEM IDs
   const getCheckoutLink = () => {
     const params = new URLSearchParams();
-
-    // Lọc các mục được chọn dựa trên selectedItems
-    const itemsToCheckout = cart.filter(item =>
-        selectedItems.has(item._id || item.id)
-    );
-
-    // Thêm item._id (ID của mục giỏ hàng) vào URL
+    const itemsToCheckout = cart.filter(item => selectedItems.has(item._id));
     itemsToCheckout.forEach(item => {
-      const cartItemId = item._id || item.id;
-      params.append("items", cartItemId);
-      console.log(`Adding cart item to checkout: ${cartItemId} (${item.product.name})`);
+      params.append("items", item._id);
+      console.log(`Adding cart item to checkout: ${item._id} (${item.product.name})`);
     });
-
     const link = `/checkout?${params.toString()}`;
     console.log("Final checkout link:", link);
     return link;
@@ -117,7 +165,6 @@ function CartPage() {
   return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Giỏ Hàng</h1>
-
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="w-full lg:w-2/3">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -144,7 +191,7 @@ function CartPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                 {cart.map((item) => {
-                  const cartItemId = item._id || item.id;
+                  const cartItemId = item._id;
                   return (
                       <tr key={cartItemId}>
                         <td className="py-4 px-6">
@@ -164,26 +211,41 @@ function CartPage() {
                             />
                             <div className="ml-4">
                               <Link
-                                  to={`/products/${item.product._id || item.product.id}`}
+                                  to={`/products/${item.product._id}`}
                                   className="font-medium text-gray-900 hover:text-red-600"
                               >
                                 {item.product.name}
                               </Link>
+                              <p className="text-gray-600 text-sm">
+                                Tồn kho: {typeof item.product.stock !== 'undefined' ? item.product.stock : 'Không xác định'}
+                              </p>
                             </div>
                           </div>
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center justify-center">
                             <button
-                                className="border border-gray-300 rounded-l-md px-3 py-1"
+                                className="border border-gray-300 rounded-l-md px-3 py-1 disabled:bg-gray-200"
                                 onClick={() => updateQuantity(cartItemId, Math.max(1, item.quantity - 1))}
+                                disabled={item.quantity <= 1 || loading}
                             >
                               -
                             </button>
-                            <span className="border-t border-b border-gray-300 px-4 py-1">{item.quantity}</span>
+                            <input
+                                type="number"
+                                value={inputQuantities[cartItemId] || item.quantity}
+                                onChange={(e) => handleQuantityInputChange(cartItemId, e.target.value)}
+                                onBlur={() => handleQuantityInputBlur(cartItemId, item)}
+                                onKeyPress={(e) => handleQuantityInputKeyPress(e, cartItemId, item)}
+                                className="w-16 text-center border-t border-b border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-red-600"
+                                min="1"
+                                max={item.product.stock}
+                                disabled={loading}
+                            />
                             <button
-                                className="border border-gray-300 rounded-r-md px-3 py-1"
+                                className="border border-gray-300 rounded-r-md px-3 py-1 disabled:bg-gray-200"
                                 onClick={() => updateQuantity(cartItemId, item.quantity + 1)}
+                                disabled={item.quantity >= item.product.stock || loading}
                             >
                               +
                             </button>
@@ -196,7 +258,8 @@ function CartPage() {
                         <td className="py-4 px-6 text-right">
                           <button
                               onClick={() => removeFromCart(cartItemId)}
-                              className="text-red-600 hover:text-red-800"
+                              className="text-red-600 hover:text-red-800 disabled:text-gray-400"
+                              disabled={loading}
                           >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -206,7 +269,7 @@ function CartPage() {
                             >
                               <path
                                   fillRule="evenodd"
-                                  d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002- SUPERUSER -2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                  d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
                                   clipRule="evenodd"
                               />
                             </svg>
@@ -218,36 +281,30 @@ function CartPage() {
                 </tbody>
               </table>
             </div>
-
             <div className="mt-6">
               <Link to="/products" className="border border-gray-300 hover:bg-gray-100 px-6 py-2 rounded-md font-medium">
                 Tiếp tục mua sắm
               </Link>
             </div>
           </div>
-
           <div className="w-full lg:w-1/3">
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-bold mb-4">Tóm tắt đơn hàng</h2>
-
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span>Tạm tính</span>
                   <span>{formatCurrency(selectedSubtotal)}</span>
                 </div>
-
                 <div className="flex justify-between">
                   <span>Phí vận chuyển</span>
                   <span>{selectedShipping === 0 ? "Miễn phí" : formatCurrency(selectedShipping)}</span>
                 </div>
-
                 <div className="border-t pt-4 mt-4">
                   <div className="flex justify-between font-bold">
                     <span>Tổng cộng</span>
                     <span className="text-red-600">{formatCurrency(selectedTotal)}</span>
                   </div>
                 </div>
-
                 <Link
                     to={selectedItems.size > 0 ? getCheckoutLink() : "#"}
                     className={`block w-full text-center py-3 rounded-md font-medium ${
@@ -258,7 +315,7 @@ function CartPage() {
                     onClick={(e) => {
                       if (selectedItems.size === 0) {
                         e.preventDefault();
-                        console.warn("Vui lòng chọn ít nhất một sản phẩm");
+                        toast.error("Vui lòng chọn ít nhất một sản phẩm");
                       }
                     }}
                 >
