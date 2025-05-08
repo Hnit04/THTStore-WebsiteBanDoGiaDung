@@ -4,7 +4,7 @@ import { Menu, X, User, LogOut, Home, Package, Users, FileText, BarChart } from 
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const adminMenuItems = [
-  { to: "/admin", label: "Trang chủ", icon: Home },
+  { to: "/admin", label: "Bảng điều khiển", icon: Home },
   { to: "/admin/products", label: "Sản phẩm", icon: Package },
   { to: "/admin/customers", label: "Khách hàng", icon: Users },
   { to: "/admin/orders", label: "Hóa đơn", icon: FileText },
@@ -64,7 +64,7 @@ const AdminDashboard = () => {
             onClick={() => setIsSidebarOpen(false)}
           >
             <User size={20} className="mr-2" />
-            Xem Profile
+            Xem hồ sơ
           </Link>
           <button
             onClick={handleLogout}

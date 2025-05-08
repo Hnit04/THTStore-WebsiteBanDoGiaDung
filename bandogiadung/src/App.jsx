@@ -21,6 +21,7 @@ import FavoritesPage from "./pages/FavoritesPage.jsx";
 import MyOrderPage from "./pages/MyOrderPage.jsx";
 import StatisticsPage from "./pages/StatisticsPage.jsx";
 import AdminDashboard from "./components/admin/AdminDashboard.jsx";
+import AdminOverview from "./components/admin/AdminOverview.jsx";
 import { useAuth } from "./contexts/AuthContext.jsx";
 
 // Component bảo vệ route admin
@@ -76,28 +77,7 @@ function App() {
           </AdminProtectedRoute>
         }
       >
-        <Route
-          index
-          element={
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-6">Admin Overview</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-lg font-semibold text-gray-700">Tổng sản phẩm</h3>
-                  <p className="text-3xl mt-2 text-gray-900">150</p>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-lg font-semibold text-gray-700">Tổng khách hàng</h3>
-                  <p className="text-3xl mt-2 text-gray-900">300</p>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-lg font-semibold text-gray-700">Tổng hóa đơn</h3>
-                  <p className="text-3xl mt-2 text-gray-900">75</p>
-                </div>
-              </div>
-            </div>
-          }
-        />
+        <Route index element={<AdminOverview />} />
         <Route path="products" element={<ProductAdminPage />} />
         <Route path="customers" element={<CustomerPage />} />
         <Route path="orders" element={<OrderPage />} />
