@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
 
 const ProductSchema = new mongoose.Schema({
-  id: { // Thêm trường id
+  id: {
     type: String,
-    required: false, // tùy thuộc vào logic của bạn
+    required: false,
     unique: true,
   },
   name: {
@@ -25,24 +25,28 @@ const ProductSchema = new mongoose.Schema({
     type: String,
     default: "/placeholder.svg",
   },
+  images: {
+    type: [String],
+    default: [],
+  },
   description: {
     type: String,
     required: [true, "Vui lòng nhập mô tả sản phẩm"],
   },
-  category_id: { // Sửa tên trường thành category_id
-    type: String, // và kiểu dữ liệu thành String
-    ref: 'Category', // Tham chiếu đến model Category
+  category_id: {
+    type: String,
+    ref: 'Category',
     required: true,
   },
   rating: {
     type: Number,
     default: 0,
   },
-  review_count: { // Đổi tên cho khớp với dữ liệu
+  review_count: {
     type: Number,
     default: 0,
   },
-  is_new: { // Đổi tên cho khớp với dữ liệu
+  is_new: {
     type: Boolean,
     default: false,
   },
@@ -56,7 +60,7 @@ const ProductSchema = new mongoose.Schema({
     min: [0, "Số lượng tồn kho không được âm"],
     default: 0,
   },
-  createdAt: { // Đổi tên cho khớp với dữ liệu
+  createdAt: {
     type: Date,
     default: Date.now,
   },
