@@ -365,11 +365,15 @@ function ProductAdminPage() {
                           </Link>
                           <div className="flex justify-between items-center mb-3">
                             <div>
-                              <span className="font-bold text-red-600 text-lg">{formatCurrency(product.price)}</span>
-                              {product.old_price && (
-                                  <span className="text-gray-400 text-sm line-through ml-2">
-                            {formatCurrency(product.old_price)}
-                          </span>
+                              {formatCurrency(product.price) && (
+                                <span className="font-bold text-red-600 text-lg">
+                                  {formatCurrency(product.price)}
+                                </span>
+                              )}
+                              {formatCurrency(product.old_price) && (
+                                <span className="text-gray-400 text-sm line-through ml-2">
+                                  {formatCurrency(product.old_price)}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -412,9 +416,9 @@ function ProductAdminPage() {
                                 onClick={() => handleToggleFavorite(product)}
                                 className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
                             >
-                              <Heart
+                              {/* <Heart
                                   className={`w-5 h-5 ${isFavorite(product.id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
-                              />
+                              /> */}
                             </button>
                           </div>
                           <div className="w-full md:w-2/3 p-6 flex flex-col justify-between">

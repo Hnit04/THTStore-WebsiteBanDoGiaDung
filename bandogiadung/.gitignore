@@ -7,10 +7,17 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependency directories
 node_modules
+
+# Build output
 dist
 dist-ssr
+
+# Local configuration
 *.local
+.env           # Thêm file môi trường để tránh đẩy key nhạy cảm
+.vercel       # Thêm thư mục tạm của Vercel
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +29,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Miscellaneous
+*.log
+npm-debug.log*
+.vercel
