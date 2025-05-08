@@ -148,11 +148,12 @@ function ProductsPage() {
     try {
       console.log("Processing buy now for product ID:", product.id)
 
+      // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
       let cartItem = cart.find(item => item.product?.id === product.id)
 
       if (!cartItem) {
         console.log("Product not in cart, adding to cart with quantity 1")
-        await addToCart(product.id, 1)
+        await addToCart(product, 1)
         console.log("Fetching updated cart")
         const updatedCart = await refreshCart()
         cartItem = updatedCart.find(item => item.product?.id === product.id)
@@ -173,23 +174,6 @@ function ProductsPage() {
       toast.error("Đã xảy ra lỗi khi mua ngay. Vui lòng thử lại.")
     }
   }
-
-  const handleAddToCart = async (product) => {
-    if (!isAuthenticated) {
-      toast.error("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng")
-      navigate("/login?redirect=" + encodeURIComponent(window.location.pathname))
-      return
-    }
-
-    try {
-      await addToCart(product.id, 1); // Sử dụng product.id thay vì product
-      await refreshCart(); // Cập nhật giỏ hàng
-      toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
-    } catch (error) {
-      console.error("Lỗi khi thêm vào giỏ hàng:", error);
-      toast.error("Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.");
-    }
-  };
 
   const handleToggleFavorite = (product) => {
     if (!isAuthenticated) {
@@ -369,6 +353,14 @@ function ProductsPage() {
                               />
                             </div>
                           </Link>
+                          {/* <button
+                              onClick={() => handleToggleFavorite(product)}
+                              className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
+                          >
+                            <Heart
+                                className={`w-5 h-5 ${isFavorite(product.id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
+                            />
+                          </button> */}
                         </div>
                         <div className="p-5">
                           <Link to={`/products/${product.id}`}>
@@ -377,19 +369,19 @@ function ProductsPage() {
                             </h3>
                           </Link>
                           <div className="flex justify-between items-center mb-3">
-                            <div>
-                              {formatCurrency(product.price) && (
-                                  <span className="font-bold text-red-600 text-lg">
+                      <div>
+                        {formatCurrency(product.price) && (
+                          <span className="font-bold text-red-600 text-lg">
                             {formatCurrency(product.price)}
                           </span>
-                              )}
-                              {formatCurrency(product.old_price) && (
-                                  <span className="text-gray-400 text-sm line-through ml-2">
+                        )}
+                        {formatCurrency(product.old_price) && (
+                          <span className="text-gray-400 text-sm line-through ml-2">
                             {formatCurrency(product.old_price)}
                           </span>
-                              )}
-                            </div>
-                          </div>
+                        )}
+                      </div>
+                    </div>
 
                           <div className="flex justify-between gap-2">
                             <button
@@ -399,7 +391,7 @@ function ProductsPage() {
                               Mua ngay
                             </button>
                             <button
-                                onClick={() => handleAddToCart(product)}
+                                onClick={() => addToCart(product, 1)}
                                 className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-all w-1/2 flex items-center justify-center"
                             >
                               <ShoppingCart className="w-4 h-4 mr-1" />
@@ -426,6 +418,14 @@ function ProductsPage() {
                                   className="w-full h-48 md:h-full object-contain p-4 transition-transform duration-300 hover:scale-105"
                               />
                             </Link>
+                            <button
+                                onClick={() => handleToggleFavorite(product)}
+                                className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-md transition-all"
+                            >
+                              {/* <Heart
+                                  className={`w-5 h-5 ${isFavorite(product.id) ? "fill-red-600 text-red-600" : "text-gray-500"}`}
+                              /> */}
+                            </button>
                           </div>
                           <div className="w-full md:w-2/3 p-6 flex flex-col justify-between">
                             <div>
@@ -436,18 +436,20 @@ function ProductsPage() {
                               </Link>
                               <p className="text-gray-600 mb-4 line-clamp-3 text-sm">{product.description}</p>
                               <div className="flex justify-between items-center mb-4">
-                                <div>
-                                  {formatCurrency(product.price) && (
-                                      <span className="font-bold text-red-600 text-lg">
-                                {formatCurrency(product.price)}
-                              </span>
-                                  )}
-                                  {formatCurrency(product.old_price) && (
-                                      <span className="text-gray-400 text-sm line-through ml-2">
-                                {formatCurrency(product.old_price)}
-                              </span>
-                                  )}
-                                </div>
+                              <div className="flex justify-between items-center mb-3">
+                            <div>
+                              {formatCurrency(product.price) && (
+                                <span className="font-bold text-red-600 text-lg">
+                                  {formatCurrency(product.price)}
+                                </span>
+                              )}
+                              {formatCurrency(product.old_price) && (
+                                <span className="text-gray-400 text-sm line-through ml-2">
+                                  {formatCurrency(product.old_price)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                               </div>
                             </div>
                             <div className="flex justify-between gap-2">
@@ -458,7 +460,7 @@ function ProductsPage() {
                                 Mua ngay
                               </button>
                               <button
-                                  onClick={() => handleAddToCart(product)}
+                                  onClick={() => addToCart(product, 1)}
                                   className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-medium transition-all w-1/2 flex items-center justify-center"
                               >
                                 <ShoppingCart className="w-5 h-5 mr-1" />
