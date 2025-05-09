@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { BarChart, LineChart, PieChart, ArrowUpRight, Package, DollarSign, Calendar, Users, ShoppingBag } from 'lucide-react';
-// import * as d3 from 'd3';
 import { getAllOrders } from '../lib/api.js';
 import ApexCharts from 'apexcharts';
+import * as XLSX from 'xlsx';
 
 const StatisticsPage = () => {
   const [orders, setOrders] = useState([]);
@@ -10,15 +10,14 @@ const StatisticsPage = () => {
   const [error, setError] = useState(null);
   const [showChart, setShowChart] = useState(false);
   const chartRef = useRef(null);
-  const tooltipRef = useRef(null);
   const [dateRange, setDateRange] = useState({
-    start: '2024-01-01',
+    start: '2025-01-01',
     end: '2025-12-31'
   });
+  const [employeeName, setEmployeeName] = useState(''); // Fetched from database
 
   const [totalRevenue, setTotalRevenue] = useState(0);
-  const [monthlyRevenue, setMonthlyRevenue] = useState([]);
-  const [yearlyRevenue, setYearlyRevenue] = useState([]);
+  const [chartData, setChartData] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [summaryStats, setSummaryStats] = useState({
     totalOrders: 0,
@@ -26,21 +25,76 @@ const StatisticsPage = () => {
     averageOrder: 0,
     topProduct: ''
   });
+  const [categoryStats, setCategoryStats] = useState([]);
+
+  // Fetch employee name from database
+  useEffect(() => {
+    const fetchEmployeeName = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No token found, please log in.');
+        }
+        const response = await fetch('/api/users/me', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch user data');
+        }
+        const data = await response.json();
+        setEmployeeName(data.name || 'Unknown User');
+      } catch (error) {
+        console.error('Error fetching employee name:', error);
+        setEmployeeName('Unknown User');
+      }
+    };
+    fetchEmployeeName();
+  }, []);
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
+        setError(null);
         const response = await getAllOrders();
         console.log('fetchOrders - Raw Response:', response);
+
+        if (!response || typeof response !== 'object') {
+          throw new Error('Response API không hợp lệ');
+        }
+
         const ordersData = Array.isArray(response) ? response : (response.data || []);
         console.log('fetchOrders - Extracted orders:', ordersData);
+
+        if (!Array.isArray(ordersData) || ordersData.length === 0) {
+          throw new Error('Không có dữ liệu đơn hàng từ API');
+        }
+
         setOrders(ordersData);
         processOrders(ordersData, dateRange.start, dateRange.end);
       } catch (error) {
-        console.error('fetchOrders - Error:', error);
-        setError('Không thể tải dữ liệu từ server. Vui lòng kiểm tra kết nối hoặc đăng nhập lại.');
+        console.error('fetchOrders - Error:', {
+          message: error.message,
+          stack: error.stack,
+          response: error.responseText ? error.responseText.slice(0, 100) : null
+        });
+        setError(error.message === 'Failed to fetch orders: 401 Unauthorized' 
+          ? 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'
+          : 'Không thể tải dữ liệu đơn hàng. Vui lòng kiểm tra kết nối hoặc thử lại sau.');
         setOrders([]);
+        setChartData([]);
+        setRecentTransactions([]);
+        setTotalRevenue(0);
+        setSummaryStats({
+          totalOrders: 0,
+          totalCustomers: 0,
+          averageOrder: 0,
+          topProduct: ''
+        });
+        setCategoryStats([]);
         setShowChart(false);
       } finally {
         setLoading(false);
@@ -49,7 +103,7 @@ const StatisticsPage = () => {
     fetchOrders();
   }, []);
 
-  const processOrders = (orders, startDate, endDate) => {
+  const processOrders = async (orders, startDate, endDate) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
     start.setUTCHours(0, 0, 0, 0);
@@ -57,16 +111,15 @@ const StatisticsPage = () => {
 
     const filteredOrders = orders.filter(order => {
       const createdAt = new Date(order.created_at);
-      return createdAt >= start && createdAt <= end;
+      return createdAt >= start && createdAt <= end && order.payment_status === "completed";
     });
 
-    console.log('processOrders - Filtered orders:', filteredOrders);
+    console.log('processOrders - Filtered orders (completed):', filteredOrders);
 
     if (filteredOrders.length === 0) {
-      console.log('processOrders - No orders to process');
-      setError(`Không có đơn hàng trong khoảng thời gian từ ${start.toLocaleDateString('vi-VN')} đến ${end.toLocaleDateString('vi-VN')}.`);
-      setMonthlyRevenue([]);
-      setYearlyRevenue([]);
+      console.log('processOrders - No completed orders to process');
+      setError(`Không có đơn hàng hoàn thành trong khoảng thời gian từ ${start.toLocaleDateString('vi-VN')} đến ${end.toLocaleDateString('vi-VN')}.`);
+      setChartData([]);
       setRecentTransactions([]);
       setTotalRevenue(0);
       setSummaryStats({
@@ -75,55 +128,151 @@ const StatisticsPage = () => {
         averageOrder: 0,
         topProduct: ''
       });
+      setCategoryStats([]);
       setShowChart(false);
       return;
     }
 
-    const revenueByMonth = {};
-    const revenueByYear = {};
+    const dayDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    const groupBy = dayDiff <= 31 ? 'day' : dayDiff <= 365 ? 'month' : 'year';
+    console.log('processOrders - Group by:', groupBy);
+
+    const revenueByGroup = {};
     let total = 0;
     const productCounts = {};
     const customerEmails = new Set();
+    const categoryRevenue = {};
 
-    filteredOrders.forEach(order => {
+    for (const order of filteredOrders) {
       const createdAt = new Date(order.created_at);
       if (isNaN(createdAt)) {
         console.warn('processOrders - Invalid created_at for order:', order);
-        return;
+        continue;
       }
-      const monthYear = createdAt.toLocaleString('vi-VN', { month: 'short', year: 'numeric' });
-      const year = createdAt.getFullYear().toString();
-      const amount = order.total_amount || 0;
+      let groupKey;
+      if (groupBy === 'day') {
+        groupKey = createdAt.toLocaleDateString('vi-VN');
+      } else if (groupBy === 'month') {
+        groupKey = createdAt.toLocaleString('vi-VN', { month: 'short', year: 'numeric' });
+      } else {
+        groupKey = createdAt.getFullYear().toString();
+      }
 
-      revenueByMonth[monthYear] = (revenueByMonth[monthYear] || 0) + amount;
-      revenueByYear[year] = (revenueByYear[year] || 0) + amount;
+      const amount = order.total_amount || 0;
+      revenueByGroup[groupKey] = (revenueByGroup[groupKey] || 0) + amount;
       total += amount;
 
       if (order.items) {
-        order.items.forEach(item => {
+        for (const item of order.items) {
           const productName = item.product_name || 'Sản phẩm không xác định';
           productCounts[productName] = (productCounts[productName] || 0) + (item.quantity || 1);
-        });
+
+          let categoryName = 'Không xác định';
+          const productId = item.product_id;
+          if (productId) {
+            try {
+              const token = localStorage.getItem('token');
+              if (!token) {
+                console.warn('No token found in localStorage');
+                throw new Error('Token không tồn tại, cần đăng nhập lại');
+              }
+              console.log('Token used for API calls:', token);
+
+              console.log(`Fetching product with ID: ${productId}`);
+              const productResponse = await fetch(`/api/products/${productId}`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+              if (!productResponse.ok) {
+                const errorText = await productResponse.text();
+                console.error(`Failed to fetch product ${productId}: ${productResponse.status} - ${errorText}`);
+                throw new Error(`Không thể lấy thông tin sản phẩm: ${productResponse.statusText}`);
+              }
+              const productText = await productResponse.text();
+              console.log(`Raw product response for ID ${productId}:`, productText);
+              const product = JSON.parse(productText);
+              console.log(`Product data for ID ${productId}:`, product);
+              const categoryId = product.category_id;
+
+              if (categoryId) {
+                console.log(`Fetching category with ID: ${categoryId}`);
+                const categoryResponse = await fetch(`/api/categories/${categoryId}`, {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                });
+                if (!categoryResponse.ok) {
+                  const errorText = await categoryResponse.text();
+                  console.error(`Failed to fetch category ${categoryId}: ${categoryResponse.status} - ${errorText}`);
+                  throw new Error(`Không thể lấy thông tin danh mục: ${categoryResponse.statusText}`);
+                }
+                const categoryText = await categoryResponse.text();
+                console.log(`Raw category response for ID ${categoryId}:`, categoryText);
+                let category;
+                try {
+                  category = JSON.parse(categoryText);
+                } catch (parseError) {
+                  console.error(`Failed to parse category response as JSON:`, parseError, categoryText);
+                  throw new Error('Phản hồi từ server không phải JSON hợp lệ');
+                }
+                console.log(`Category data for ID ${categoryId}:`, category);
+                categoryName = category.data?.name || category.name || 'Không xác định';
+              }
+
+              const itemRevenue = (item.price || 0) * (item.quantity || 1);
+              categoryRevenue[categoryName] = (categoryRevenue[categoryName] || 0) + itemRevenue;
+            } catch (error) {
+              console.error('Error fetching category data:', error.message, error.stack);
+              const itemRevenue = (item.price || 0) * (item.quantity || 1);
+              categoryRevenue['Không xác định'] = (categoryRevenue['Không xác định'] || 0) + itemRevenue;
+            }
+          } else {
+            console.warn(`No product_id found for item:`, item);
+            const itemRevenue = (item.price || 0) * (item.quantity || 1);
+            categoryRevenue['Không xác định'] = (categoryRevenue['Không xác định'] || 0) + itemRevenue;
+          }
+        }
       }
 
       if (order.email) {
         customerEmails.add(order.email);
       }
-    });
+    }
 
-    const monthlyData = Object.keys(revenueByMonth)
-      .map(month => ({
-        month,
-        revenue: revenueByMonth[month],
-      }))
-      .sort((a, b) => new Date(a.month) - new Date(b.month));
-
-    const yearlyData = Object.keys(revenueByYear)
-      .map(year => ({
-        year,
-        revenue: revenueByYear[year],
-      }))
-      .sort((a, b) => a.year - b.year);
+    let chartData = [];
+    if (groupBy === 'day') {
+      const days = Array.from({ length: dayDiff }, (_, i) => {
+        const date = new Date(start);
+        date.setDate(start.getDate() + i);
+        return date.toLocaleDateString('vi-VN');
+      });
+      chartData = days.map(day => ({
+        label: day,
+        revenue: revenueByGroup[day] || 0,
+      }));
+    } else if (groupBy === 'month') {
+      const months = [];
+      let current = new Date(start);
+      while (current <= end) {
+        const monthYear = current.toLocaleString('vi-VN', { month: 'short', year: 'numeric' });
+        months.push(monthYear);
+        current.setMonth(current.getMonth() + 1);
+      }
+      chartData = months.map(month => ({
+        label: month,
+        revenue: revenueByGroup[month] || 0,
+      }));
+    } else {
+      const years = [];
+      for (let year = start.getFullYear(); year <= end.getFullYear(); year++) {
+        years.push(year.toString());
+      }
+      chartData = years.map(year => ({
+        label: year,
+        revenue: revenueByGroup[year] || 0,
+      }));
+    }
 
     const sortedTransactions = filteredOrders
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -143,9 +292,17 @@ const StatisticsPage = () => {
     const totalCustomers = customerEmails.size;
     const averageOrder = totalOrders > 0 ? total / totalOrders : 0;
 
-    console.log('processOrders - Processed:', { monthlyData, yearlyData, total, totalOrders, totalCustomers, topProduct });
-    setMonthlyRevenue(monthlyData);
-    setYearlyRevenue(yearlyData);
+    const totalCategoryRevenue = Object.values(categoryRevenue).reduce((sum, rev) => sum + rev, 0);
+    const categoryStats = Object.keys(categoryRevenue)
+      .map(category => ({
+        name: category,
+        percentage: totalCategoryRevenue > 0 ? ((categoryRevenue[category] / totalCategoryRevenue) * 100).toFixed(1) : 0
+      }))
+      .sort((a, b) => b.percentage - a.percentage)
+      .slice(0, 3);
+
+    console.log('processOrders - Processed:', { chartData, total, totalOrders, totalCustomers, topProduct, categoryStats });
+    setChartData(chartData);
     setRecentTransactions(sortedTransactions);
     setTotalRevenue(total);
     setSummaryStats({
@@ -154,7 +311,8 @@ const StatisticsPage = () => {
       averageOrder,
       topProduct
     });
-    setShowChart(monthlyData.length > 0 || yearlyData.length > 0);
+    setCategoryStats(categoryStats);
+    setShowChart(chartData.length > 0);
   };
 
   const handleDateChange = (e) => {
@@ -163,13 +321,117 @@ const StatisticsPage = () => {
       ...prev,
       [name]: value
     }));
-    processOrders(orders, value, dateRange.end);
   };
 
   const formatCurrency = (amount) => 
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
   const percentChange = 12.4;
+
+  const exportToExcel = () => {
+    try {
+      // Get current date (May 09, 2025)
+      const currentDate = new Date('2025-05-09');
+      const currentDateStr = currentDate.toLocaleDateString('vi-VN');
+
+      // Filter orders for the current date
+      const todayOrders = orders.filter(order => {
+        const createdAt = new Date(order.created_at);
+        return createdAt.toLocaleDateString('vi-VN') === currentDateStr && order.payment_status === "completed";
+      });
+
+      if (todayOrders.length === 0) {
+        setError(`Không có đơn hàng hoàn thành nào vào ngày ${currentDateStr}.`);
+        return;
+      }
+
+      // Prepare detailed order data
+      const orderData = todayOrders.map((order, index) => ({
+        'Mã Đơn Hàng': order.id || `order-${index}`,
+        'Ngày Đặt Hàng': new Date(order.created_at).toLocaleDateString('vi-VN'),
+        'Sản Phẩm': order.items && order.items[0]?.product_name || 'Sản phẩm không xác định',
+        'Số Tiền': formatCurrency(order.total_amount || 0)
+      }));
+
+      // Calculate total revenue for the day
+      const totalRevenueToday = todayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+
+      // Create worksheet starting with metadata
+      const ws = XLSX.utils.json_to_sheet([], { skipHeader: true });
+
+      // Add title
+      const title = `BÁO CÁO DOANH THU NGÀY ${currentDateStr}`;
+      XLSX.utils.sheet_add_aoa(ws, [[title]], { origin: 'A1' });
+
+      // Add metadata (Statistics Date and Employee Name)
+      XLSX.utils.sheet_add_aoa(ws, [
+        ['Ngày Thống Kê:', currentDateStr],
+        ['Nhân Viên Thống Kê:', employeeName || 'Unknown User']
+      ], { origin: 'A2' });
+
+      // Add a blank row
+      XLSX.utils.sheet_add_aoa(ws, [['']], { origin: 'A4' });
+
+      // Add order data table
+      XLSX.utils.sheet_add_json(ws, orderData, {
+        origin: 'A5',
+        header: ['Mã Đơn Hàng', 'Ngày Đặt Hàng', 'Sản Phẩm', 'Số Tiền'],
+        skipHeader: false
+      });
+
+      // Add summary row (Total Revenue)
+      const summaryRowPosition = 5 + orderData.length + 1; // After the table
+      XLSX.utils.sheet_add_aoa(ws, [
+        ['Tổng Doanh Thu:', '', '', formatCurrency(totalRevenueToday)]
+      ], { origin: `A${summaryRowPosition}` });
+
+      // Merge cells for title and summary label
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // Title
+        { s: { r: summaryRowPosition - 1, c: 0 }, e: { r: summaryRowPosition - 1, c: 2 } } // Total Revenue label
+      ];
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 15 }, // Mã Đơn Hàng
+        { wch: 20 }, // Ngày Đặt Hàng
+        { wch: 30 }, // Sản Phẩm
+        { wch: 20 }  // Số Tiền
+      ];
+
+      // Apply styles
+      ws['A1'].s = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center' } };
+      ws['A2'].s = { font: { bold: true } };
+      ws['A3'].s = { font: { bold: true } };
+      ws['A5'].s = { font: { bold: true }, alignment: { horizontal: 'center' } };
+      ws['B5'].s = { font: { bold: true }, alignment: { horizontal: 'center' } };
+      ws['C5'].s = { font: { bold: true }, alignment: { horizontal: 'center' } };
+      ws['D5'].s = { font: { bold: true }, alignment: { horizontal: 'center' } };
+      ws[`A${summaryRowPosition}`].s = { font: { bold: true }, alignment: { horizontal: 'right' } };
+      ws[`D${summaryRowPosition}`].s = { font: { bold: true } };
+
+      // Create workbook and add worksheet
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Báo Cáo Doanh Thu');
+
+      // Generate binary string
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+
+      // Create Blob and trigger download
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `BaoCaoDoanhThu_${currentDate.toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      setError('Không thể xuất báo cáo Excel. Vui lòng thử lại.');
+    }
+  };
 
   useEffect(() => {
     if (orders.length > 0) {
@@ -178,27 +440,48 @@ const StatisticsPage = () => {
   }, [dateRange]);
 
   useEffect(() => {
-    if (!showChart || !chartRef.current) return;
+    if (!showChart || !chartRef.current || chartData.length === 0) {
+      console.log('Chart not rendered:', { showChart, chartRef: !!chartRef.current, chartDataLength: chartData.length });
+      return;
+    }
 
-    const data = monthlyRevenue.length > 0 ? monthlyRevenue : yearlyRevenue;
+    const dayDiff = Math.ceil((new Date(dateRange.end) - new Date(dateRange.start)) / (1000 * 60 * 60 * 24));
+    const groupBy = dayDiff <= 31 ? 'day' : dayDiff <= 365 ? 'month' : 'year';
+
     const options = {
       chart: {
         type: 'bar',
-        height: 300,
+        height: 350,
         animations: {
           enabled: true,
-          easing: 'easeout',
-          speed: 800,
+          easing: 'easeinout',
+          speed: 600,
         },
         toolbar: {
-          show: false,
+          show: true,
+          tools: {
+            download: true,
+            selection: false,
+            zoom: true,
+            zoomin: true,
+            zoomout: true,
+            pan: false,
+            reset: true,
+          },
+        },
+        dropShadow: {
+          enabled: true,
+          top: 2,
+          left: 2,
+          blur: 4,
+          opacity: 0.2,
         },
       },
       plotOptions: {
         bar: {
-          borderRadius: 6,
+          borderRadius: 8,
           horizontal: false,
-          columnWidth: '30%',
+          columnWidth: chartData.length > 20 ? '50%' : chartData.length > 10 ? '40%' : '30%',
         },
       },
       dataLabels: {
@@ -210,25 +493,33 @@ const StatisticsPage = () => {
         colors: ['transparent'],
       },
       xaxis: {
-        categories: data.map(d => d.month || d.year),
+        categories: chartData.map(d => d.label),
         labels: {
-          rotate: -45,
+          rotate: groupBy === 'day' ? -45 : 0,
           style: {
             colors: '#4B5563',
             fontSize: '12px',
+            fontWeight: 400,
           },
+          formatter: (value) => value,
         },
         title: {
-          text: monthlyRevenue.length > 0 ? 'Tháng' : 'Năm',
+          text: groupBy === 'day' ? 'Ngày' : groupBy === 'month' ? 'Tháng' : 'Năm',
           style: {
             color: '#4B5563',
-            fontSize: '12px',
+            fontSize: '14px',
+            fontWeight: 600,
           },
         },
+        tickAmount: chartData.length > 20 ? Math.floor(chartData.length / 2) : undefined,
       },
       yaxis: {
         labels: {
-          formatter: (value) => (value / 1000000) + 'M',
+          formatter: (value) => {
+            if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+            if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+            return value;
+          },
           style: {
             colors: '#4B5563',
             fontSize: '12px',
@@ -238,14 +529,14 @@ const StatisticsPage = () => {
           text: 'Doanh thu (VNĐ)',
           style: {
             color: '#4B5563',
-            fontSize: '12px',
+            fontSize: '14px',
+            fontWeight: 600,
           },
         },
       },
       grid: {
-        show: true,
         borderColor: '#E5E7EB',
-        strokeDashArray: 5,
+        strokeDashArray: 4,
         xaxis: {
           lines: { show: false },
         },
@@ -258,15 +549,16 @@ const StatisticsPage = () => {
         gradient: {
           shade: 'light',
           type: 'vertical',
-          shadeIntensity: 0.5,
-          gradientToColors: ['#60A5FA'],
-          inverseColors: true,
+          shadeIntensity: 0.3,
+          gradientToColors: ['#93C5FD'],
+          inverseColors: false,
           opacityFrom: 1,
-          opacityTo: 0.7,
-          stops: [0, 100],
+          opacityTo: 0.8,
+          stops: [0, 90, 100],
         },
       },
       tooltip: {
+        theme: 'light',
         y: {
           formatter: (value) => formatCurrency(value),
           title: {
@@ -274,19 +566,34 @@ const StatisticsPage = () => {
           },
         },
         custom: ({ series, seriesIndex, dataPointIndex, w }) => {
-          return `<div class="p-2 bg-gray-800 text-white rounded-lg shadow-lg">
-            <div>${w.globals.labels[dataPointIndex]}</div>
-            <div>Doanh thu: ${formatCurrency(series[seriesIndex][dataPointIndex])}</div>
+          return `<div class="p-3 bg-white border shadow-lg rounded-lg">
+            <div class="font-semibold text-gray-700">${w.globals.labels[dataPointIndex]}</div>
+            <div class="text-gray-900">Doanh thu: ${formatCurrency(series[seriesIndex][dataPointIndex])}</div>
           </div>`;
         },
       },
-      colors: ['#3B82F6'],
+      colors: ['#2563EB'],
+      responsive: [{
+        breakpoint: 640,
+        options: {
+          chart: {
+            height: 300,
+          },
+          xaxis: {
+            labels: {
+              rotate: -45,
+            },
+          },
+        },
+      }],
     };
 
     const series = [{
       name: 'Doanh thu',
-      data: data.map(d => d.revenue),
+      data: chartData.map(d => d.revenue),
     }];
+
+    console.log('Rendering chart with:', { series, categories: chartData.map(d => d.label) });
 
     if (chartRef.current) {
       const chart = new ApexCharts(chartRef.current, {
@@ -299,23 +606,29 @@ const StatisticsPage = () => {
         chart.destroy();
       };
     }
-  }, [monthlyRevenue, yearlyRevenue, showChart]);
+  }, [chartData, showChart, dateRange]);
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Thống Kê Doanh Thu</h1>
-        <div className="flex space-x-2">
-          <button className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+        <div className="flex space-x-2 items-center">
+          <button 
+            onClick={exportToExcel}
+            className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
             <div className="flex items-center space-x-1">
               <Calendar className="w-4 h-4" />
               <span>Xuất báo cáo</span>
             </div>
           </button>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <button 
+           
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
             <div className="flex items-center space-x-1">
               <ArrowUpRight className="w-4 h-4" />
-              <span>Tải xuống PDF</span>
+              <span>Tải xuống Excel</span>
             </div>
           </button>
         </div>
@@ -425,7 +738,7 @@ const StatisticsPage = () => {
               </div>
             </div>
             <div className="p-4">
-              {error && (
+              {error && !showChart && (
                 <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
                   {error}
                   {error.includes('đăng nhập') && (
@@ -463,53 +776,27 @@ const StatisticsPage = () => {
               <h2 className="text-lg font-semibold">Phân tích doanh thu</h2>
             </div>
             <div className="p-4">
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Sản phẩm điện tử</span>
-                  <span className="text-sm font-bold">68%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '68%' }}></div>
-                </div>
-              </div>
-              
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Phụ kiện</span>
-                  <span className="text-sm font-bold">22%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: '22%' }}></div>
-                </div>
-              </div>
-              
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Dịch vụ</span>
-                  <span className="text-sm font-bold">10%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-purple-500 h-2 rounded-full" style={{ width: '10%' }}></div>
-                </div>
-              </div>
-              
-              <div className="mt-8">
-                <h3 className="font-medium text-gray-700 mb-3">Top sản phẩm bán chạy</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                      <span className="text-blue-600 font-bold">1</span>
+              {categoryStats.length > 0 ? (
+                categoryStats.map((category, index) => (
+                  <div key={index} className="mb-6">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">{category.name}</span>
+                      <span className="text-sm font-bold">{category.percentage}%</span>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between">
-                        <span className="text-sm font-medium">{summaryStats.topProduct || 'Không xác định'}</span>
-                        <span className="text-sm text-gray-600">{formatCurrency(summaryStats.averageOrder)}</span>
-                      </div>
-                      <div className="text-xs text-gray-500">{summaryStats.totalOrders} đơn hàng</div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${index === 0 ? 'bg-blue-600' : index === 1 ? 'bg-green-500' : 'bg-purple-500'}`}
+                        style={{ width: `${category.percentage}%` }}
+                      ></div>
                     </div>
                   </div>
+                ))
+              ) : (
+                <div className="flex flex-col justify-center items-center h-32 text-gray-500">
+                  <Package className="w-12 h-12 text-gray-300 mb-2" />
+                  <p className="text-sm text-gray-400">Không có dữ liệu phân tích danh mục</p>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

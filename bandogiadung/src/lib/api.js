@@ -134,25 +134,25 @@ export async function createOrder(orderData) {
   return response
 }
 
-export async function getOrders({ startDate, endDate }) {
-  const token = localStorage.getItem("token")
-  console.log("api.js - Token:", token)
-  console.log("api.js - API Request:", `${API_URL}/orders/admin?startDate=${startDate}&endDate=${endDate}`)
+// export async function getOrders({ startDate, endDate }) {
+//   const token = localStorage.getItem("token")
+//   console.log("api.js - Token:", token)
+//   console.log("api.js - API Request:", `${API_URL}/orders/admin?startDate=${startDate}&endDate=${endDate}`)
 
-  try {
-    const response = await axios.get(`${API_URL}/orders/admin`, {
-      params: { startDate, endDate },
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    console.log("api.js - API Response:", response.data)
-    return response.data
-  } catch (error) {
-    console.error("api.js - API Error:", error.response?.data || error.message)
-    throw error.response?.data || error
-  }
-}
+//   try {
+//     const response = await axios.get(`${API_URL}/orders/admin`, {
+//       params: { startDate, endDate },
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//       },
+//     })
+//     console.log("api.js - API Response:", response.data)
+//     return response.data
+//   } catch (error) {
+//     console.error("api.js - API Error:", error.response?.data || error.message)
+//     throw error.response?.data || error
+//   }
+// }
 
 export async function getAllUsers() {
   const response = await fetchAPI("/users/customer")
