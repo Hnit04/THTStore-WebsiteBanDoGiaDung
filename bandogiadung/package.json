@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "prebuild": "node -e \"if (require('fs').existsSync('node_modules/.bin/vite')) { console.log('Vite is available'); } else { console.log('Missing Vite'); process.exit(1); }\"",
+    "build": "npx vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -43,8 +44,8 @@
     "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-apexcharts": "^1.7.0",
-    "react-dom": "^18.2.0",
     "react-chartjs-2": "^5.3.0",
+    "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",
     "react-hot-toast": "^2.5.2",
     "react-redux": "^9.2.0",
@@ -67,6 +68,9 @@
     "globals": "^16.0.0",
     "nodemon": "^3.1.10",
     "typescript": "^5.8.3",
-    "vite": "^6.3.1"
+    "vite": "^6.3.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
