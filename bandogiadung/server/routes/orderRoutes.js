@@ -17,5 +17,5 @@ router.route("/:id").get(protect, getOrderById)
 router.route("/:id/cancel").put(protect, cancelOrder)
 router.route("/").get(protect, getAllOrders)
 router.route('/admin').get(protect, getAllOrdersAdmin)
-
+  
 module.exports = router

@@ -36,7 +36,49 @@ async function fetchAPI(endpoint, options = {}) {
     throw new Error(`Failed to fetch API at ${url}: ${error.message}`);
   }
 }
+// Đơn hàng
+export async function  getOrders ({ startDate, endDate }) {
+  const token = localStorage.getItem('token');
+  console.log('api.js - Token:', token);
+  console.log('api.js - API Request:', `${API_URL}/orders/admin?startDate=${startDate}&endDate=${endDate}`);
+  
+  try {
+    const response = await axios.get(`${API_URL}/orders/admin`, {
+      params: { startDate, endDate },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log('api.js - API Response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('api.js - API Error:', error.response?.data || error.message);
+    throw error.response?.data || error;
+  }
+};
+export const getAdminOrders = async (startDate, endDate) => {
+  const response = await fetch(`/api/orders/orderCustomer?startDate=${startDate}&endDate=${endDate}`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch orders");
+  }
+  return response.json();
+};
 
+export const getTotalProducts = async () => {
+  const response = await fetch("/api/products?limit=1", {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch products");
+  }
+  return response.json();
+};
 // Sản phẩm
 export async function getProducts(options = {}) {
   const queryParams = new URLSearchParams()
@@ -87,25 +129,25 @@ export async function createOrder(orderData) {
   return response
 }
 
-export async function getOrders({ startDate, endDate }) {
-  const token = localStorage.getItem("token")
-  console.log("api.js - Token:", token)
-  console.log("api.js - API Request:", `${API_URL}/orders/admin?startDate=${startDate}&endDate=${endDate}`)
+// export async function getOrders({ startDate, endDate }) {
+//   const token = localStorage.getItem("token")
+//   console.log("api.js - Token:", token)
+//   console.log("api.js - API Request:", `${API_URL}/orders/admin?startDate=${startDate}&endDate=${endDate}`)
 
-  try {
-    const response = await axios.get(`${API_URL}/orders/admin`, {
-      params: { startDate, endDate },
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    console.log("api.js - API Response:", response.data)
-    return response.data
-  } catch (error) {
-    console.error("api.js - API Error:", error.response?.data || error.message)
-    throw error.response?.data || error
-  }
-}
+//   try {
+//     const response = await axios.get(`${API_URL}/orders/admin`, {
+//       params: { startDate, endDate },
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//       },
+//     })
+//     console.log("api.js - API Response:", response.data)
+//     return response.data
+//   } catch (error) {
+//     console.error("api.js - API Error:", error.response?.data || error.message)
+//     throw error.response?.data || error
+//   }
+// }
 
 export async function getAllUsers() {
   const response = await fetchAPI("/users/customer")
@@ -192,13 +234,27 @@ export async function checkSepayConnection() {
 
 // Xác thực
 export async function login(email, password) {
-  const response = await fetchAPI("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  })
-
-  localStorage.setItem("token", response.token)
-  return response
+  try {
+    console.log("login - Attempting with email:", email);
+    const response = await fetchAPI("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    
+    // Verify token was received and save it
+    if (!response.token) {
+      console.error("login - No token received");
+      throw new Error("No token received from server");
+    }
+    
+    localStorage.setItem("token", response.token);
+    console.log("login - Token saved to localStorage");
+    
+    return response;
+  } catch (error) {
+    console.error("login - Failed:", error.message);
+    throw error;
+  }
 }
 
 export async function register(userData) {
@@ -265,13 +321,40 @@ export async function logout() {
 }
 
 export async function getCurrentUser() {
+  console.log("🔍 getCurrentUser - Starting user verification");
+  const token = localStorage.getItem("token");
+  
+  if (!token) {
+    console.warn("getCurrentUser - No token in localStorage");
+    throw new Error("No authentication token found");
+  }
+  
   try {
-    const response = await fetchAPI("/auth/me")
-    return response
+    console.log("getCurrentUser - Fetching user data with token");
+    const response = await fetchAPI("/auth/me");
+    
+    // Validate the response thoroughly
+    if (!response) {
+      console.error("getCurrentUser - Empty response");
+      throw new Error("Empty response from server");
+    }
+    
+    if (!response.email) {
+      console.error("getCurrentUser - Missing email in response:", response);
+      throw new Error("Missing email in user data");
+    }
+    
+    if (!response.role) {
+      console.error("getCurrentUser - Missing role in response:", response);
+      throw new Error("Missing role in user data");
+    }
+    
+    console.log("getCurrentUser - Successfully verified user:", response.email, "Role:", response.role);
+    return response;
   } catch (error) {
-    console.error("Failed to fetch current user:", error.message || error)
-    localStorage.removeItem("token")
-    return null
+    console.error("getCurrentUser - Failed:", error.message);
+    // Don't clear token here, let the auth context handle it
+    throw error;
   }
 }
 

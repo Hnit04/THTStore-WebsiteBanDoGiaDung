@@ -19,4 +19,5 @@ router
     .put(protect, authorize("admin"), updateProduct)
     .delete(protect, authorize("admin"), deleteProduct);
 
+
 module.exports = router;

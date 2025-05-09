@@ -22,6 +22,7 @@ import FavoritesPage from "./pages/FavoritesPage.jsx";
 import MyOrderPage from "./pages/MyOrderPage.jsx";
 import StatisticsPage from "./pages/StatisticsPage.jsx";
 import AdminDashboard from "./components/admin/AdminDashboard.jsx";
+import AdminOverview from "./components/admin/AdminOverview.jsx";
 import { useAuth } from "./contexts/AuthContext.jsx";
 
 // Component bảo vệ route admin
@@ -68,7 +69,6 @@ function App() {
             {/* 404 Page */}
             <Route path="*" element={<NotFoundPage />} />
           </Route>
-
           {/* Admin routes với AdminDashboard, không có Header/Footer */}
           <Route
               path="/admin"
