@@ -2,17 +2,161 @@
 "use client";
 
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { useCart } from "../contexts/CartContext.jsx";
 import { formatCurrency } from "../lib/utils.js";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import toast from "react-hot-toast";
+import debounce from "lodash/debounce";
+
+// Component cho mỗi hàng trong bảng giỏ hàng
+const CartItemRow = memo(({ item, selectedItems, handleItemSelect, updateQuantity, removeFromCart, inputQuantities, handleQuantityInputChange, handleQuantityInputBlur, handleQuantityInputKeyPress, loading }) => {
+  const cartItemId = item._id;
+
+  return (
+      <tr key={cartItemId}>
+        <td className="py-4 px-6">
+          <input
+              type="checkbox"
+              checked={selectedItems.has(cartItemId)}
+              onChange={() => handleItemSelect(cartItemId)}
+              className="mr-2"
+          />
+        </td>
+        <td className="py-4 px-6">
+          <div className="flex items-center">
+            <img
+                src={item.product.image_url || "/placeholder.svg?height=80&width=80"}
+                alt={item.product.name}
+                className="w-20 h-20 object-cover rounded"
+            />
+            <div className="ml-4">
+              <Link
+                  to={`/products/${item.product._id}`}
+                  className="font-medium text-gray-900 hover:text-red-600"
+              >
+                {item.product.name}
+              </Link>
+              <p className="text-gray-600 text-sm">
+                Tồn kho: {typeof item.product.stock !== 'undefined' ? item.product.stock : 'Không xác định'}
+              </p>
+            </div>
+          </div>
+        </td>
+        <td className="py-4 px-6">
+          <div className="flex items-center justify-center relative">
+            <button
+                className="border border-gray-300 rounded-l-md px-3 py-1 disabled:bg-gray-200"
+                onClick={() => updateQuantity(cartItemId, Math.max(1, item.quantity - 1))}
+                disabled={item.quantity <= 1 || loading[cartItemId]}
+            >
+              -
+            </button>
+            <input
+                type="number"
+                value={inputQuantities[cartItemId] || item.quantity}
+                onChange={(e) => handleQuantityInputChange(cartItemId, e.target.value)}
+                onBlur={() => handleQuantityInputBlur(cartItemId, item)}
+                onKeyPress={(e) => handleQuantityInputKeyPress(e, cartItemId, item)}
+                className="w-16 text-center border-t border-b border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-red-600 transition-all duration-200"
+                min="1"
+                max={item.product.stock}
+                disabled={loading[cartItemId]}
+            />
+            <button
+                className="border border-gray-300 rounded-r-md px-3 py-1 disabled:bg-gray-200"
+                onClick={() => updateQuantity(cartItemId, item.quantity + 1)}
+                disabled={item.quantity >= item.product.stock || loading[cartItemId]}
+            >
+              +
+            </button>
+            {loading[cartItemId] && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50">
+                  <svg className="animate-spin h-5 w-5 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+            )}
+          </div>
+        </td>
+        <td className="py-4 px-6 text-right">{formatCurrency(item.product.price)}</td>
+        <td className="py-4 px-6 text-right font-medium">
+          {formatCurrency(item.product.price * item.quantity)}
+        </td>
+        <td className="py-4 px-6 text-right">
+          <button
+              onClick={() => removeFromCart(cartItemId)}
+              className="text-red-600 hover:text-red-800 disabled:text-gray-400"
+              disabled={loading[cartItemId]}
+          >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+            >
+              <path
+                  fillRule="evenodd"
+                  d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        </td>
+      </tr>
+  );
+});
 
 function CartPage() {
-  const { cart, loading, updateQuantity, removeFromCart, getCartTotal } = useCart();
+  const { cart, loading: cartLoading, updateQuantity: updateCartQuantity, removeFromCart, getCartTotal } = useCart();
   const { isAuthenticated } = useAuth();
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [inputQuantities, setInputQuantities] = useState({});
+  const [itemLoading, setItemLoading] = useState({}); // Trạng thái tải cho từng item
+
+  // Di chuyển useCallback lên cấp cao nhất
+  const debouncedQuantityInputBlur = useCallback(
+      debounce(async (itemId, item, value) => {
+        const parsedQuantity = parseInt(value, 10);
+
+        if (isNaN(parsedQuantity) || parsedQuantity < 1) {
+          toast.error("Số lượng phải lớn hơn 0");
+          setInputQuantities(prev => ({
+            ...prev,
+            [itemId]: item.quantity.toString()
+          }));
+          return;
+        }
+
+        if (parsedQuantity > item.product.stock) {
+          toast.error(`Sản phẩm ${item.product.name} chỉ còn ${item.product.stock} đơn vị trong kho`);
+          setInputQuantities(prev => ({
+            ...prev,
+            [itemId]: item.quantity.toString()
+          }));
+          return;
+        }
+
+        try {
+          setItemLoading(prev => ({ ...prev, [itemId]: true }));
+          await updateCartQuantity(itemId, parsedQuantity);
+          setInputQuantities(prev => ({
+            ...prev,
+            [itemId]: parsedQuantity.toString()
+          }));
+        } catch (error) {
+          toast.error(error.message || "Không thể cập nhật số lượng");
+          setInputQuantities(prev => ({
+            ...prev,
+            [itemId]: item.quantity.toString()
+          }));
+        } finally {
+          setItemLoading(prev => ({ ...prev, [itemId]: false }));
+        }
+      }, 300),
+      [updateCartQuantity]
+  );
 
   useEffect(() => {
     console.log("Current cart items:", cart.map(item => ({
@@ -47,7 +191,7 @@ function CartPage() {
     );
   }
 
-  if (loading) {
+  if (cartLoading) {
     return (
         <div className="container mx-auto px-4 py-8">
           <h1 className="text-3xl font-bold mb-6">Giỏ Hàng</h1>
@@ -102,46 +246,33 @@ function CartPage() {
     }));
   };
 
-  const handleQuantityInputBlur = async (itemId, item) => {
-    const value = inputQuantities[itemId];
-    const parsedQuantity = parseInt(value, 10);
-
-    if (isNaN(parsedQuantity) || parsedQuantity < 1) {
-      toast.error("Số lượng phải lớn hơn 0");
-      setInputQuantities(prev => ({
-        ...prev,
-        [itemId]: item.quantity.toString()
-      }));
-      return;
+  const handleQuantityInputKeyPress = (e, itemId, item) => {
+    if (e.key === 'Enter') {
+      debouncedQuantityInputBlur(itemId, item, inputQuantities[itemId]);
     }
+  };
 
-    if (parsedQuantity > item.product.stock) {
-      toast.error(`Sản phẩm ${item.product.name} chỉ còn ${item.product.stock} đơn vị trong kho`);
-      setInputQuantities(prev => ({
-        ...prev,
-        [itemId]: item.quantity.toString()
-      }));
-      return;
-    }
+  const handleUpdateQuantity = async (itemId, newQuantity) => {
+    const item = cart.find(i => i._id === itemId);
+    if (!item) return;
+
+    // Optimistic update
+    setInputQuantities(prev => ({
+      ...prev,
+      [itemId]: newQuantity.toString()
+    }));
+    setItemLoading(prev => ({ ...prev, [itemId]: true }));
 
     try {
-      await updateQuantity(itemId, parsedQuantity);
-      setInputQuantities(prev => ({
-        ...prev,
-        [itemId]: parsedQuantity.toString()
-      }));
+      await updateCartQuantity(itemId, newQuantity);
     } catch (error) {
       toast.error(error.message || "Không thể cập nhật số lượng");
       setInputQuantities(prev => ({
         ...prev,
         [itemId]: item.quantity.toString()
       }));
-    }
-  };
-
-  const handleQuantityInputKeyPress = (e, itemId, item) => {
-    if (e.key === 'Enter') {
-      handleQuantityInputBlur(itemId, item);
+    } finally {
+      setItemLoading(prev => ({ ...prev, [itemId]: false }));
     }
   };
 
@@ -190,94 +321,21 @@ function CartPage() {
                 </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                {cart.map((item) => {
-                  const cartItemId = item._id;
-                  return (
-                      <tr key={cartItemId}>
-                        <td className="py-4 px-6">
-                          <input
-                              type="checkbox"
-                              checked={selectedItems.has(cartItemId)}
-                              onChange={() => handleItemSelect(cartItemId)}
-                              className="mr-2"
-                          />
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center">
-                            <img
-                                src={item.product.image_url || "/placeholder.svg?height=80&width=80"}
-                                alt={item.product.name}
-                                className="w-20 h-20 object-cover rounded"
-                            />
-                            <div className="ml-4">
-                              <Link
-                                  to={`/products/${item.product._id}`}
-                                  className="font-medium text-gray-900 hover:text-red-600"
-                              >
-                                {item.product.name}
-                              </Link>
-                              <p className="text-gray-600 text-sm">
-                                Tồn kho: {typeof item.product.stock !== 'undefined' ? item.product.stock : 'Không xác định'}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center justify-center">
-                            <button
-                                className="border border-gray-300 rounded-l-md px-3 py-1 disabled:bg-gray-200"
-                                onClick={() => updateQuantity(cartItemId, Math.max(1, item.quantity - 1))}
-                                disabled={item.quantity <= 1 || loading}
-                            >
-                              -
-                            </button>
-                            <input
-                                type="number"
-                                value={inputQuantities[cartItemId] || item.quantity}
-                                onChange={(e) => handleQuantityInputChange(cartItemId, e.target.value)}
-                                onBlur={() => handleQuantityInputBlur(cartItemId, item)}
-                                onKeyPress={(e) => handleQuantityInputKeyPress(e, cartItemId, item)}
-                                className="w-16 text-center border-t border-b border-gray-300 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-red-600"
-                                min="1"
-                                max={item.product.stock}
-                                disabled={loading}
-                            />
-                            <button
-                                className="border border-gray-300 rounded-r-md px-3 py-1 disabled:bg-gray-200"
-                                onClick={() => updateQuantity(cartItemId, item.quantity + 1)}
-                                disabled={item.quantity >= item.product.stock || loading}
-                            >
-                              +
-                            </button>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-right">{formatCurrency(item.product.price)}</td>
-                        <td className="py-4 px-6 text-right font-medium">
-                          {formatCurrency(item.product.price * item.quantity)}
-                        </td>
-                        <td className="py-4 px-6 text-right">
-                          <button
-                              onClick={() => removeFromCart(cartItemId)}
-                              className="text-red-600 hover:text-red-800 disabled:text-gray-400"
-                              disabled={loading}
-                          >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                            >
-                              <path
-                                  fillRule="evenodd"
-                                  d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                  clipRule="evenodd"
-                              />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                  );
-                })}
+                {cart.map((item) => (
+                    <CartItemRow
+                        key={item._id}
+                        item={item}
+                        selectedItems={selectedItems}
+                        handleItemSelect={handleItemSelect}
+                        updateQuantity={handleUpdateQuantity}
+                        removeFromCart={removeFromCart}
+                        inputQuantities={inputQuantities}
+                        handleQuantityInputChange={handleQuantityInputChange}
+                        handleQuantityInputBlur={debouncedQuantityInputBlur}
+                        handleQuantityInputKeyPress={handleQuantityInputKeyPress}
+                        loading={itemLoading}
+                    />
+                ))}
                 </tbody>
               </table>
             </div>
