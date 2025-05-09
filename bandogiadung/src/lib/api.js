@@ -1,44 +1,39 @@
-// client/src/lib/api.js
-import axios from "axios"
-const API_URL = "http://localhost:5000/api"
+import axios from "axios";
 
-// Hàm helper để gọi API
+const API_URL = "http://localhost:5000/api";
+
 async function fetchAPI(endpoint, options = {}) {
-  const url = `${API_URL}${endpoint}`
-
-  // Thêm token vào header nếu đã đăng nhập
-  const token = localStorage.getItem("token")
+  const url = `${API_URL}${endpoint}`;
+  const token = localStorage.getItem("token");
   if (token) {
     options.headers = {
       ...options.headers,
       Authorization: `Bearer ${token}`,
-    }
+    };
   }
 
-  // Mặc định headers
   options.headers = {
     "Content-Type": "application/json",
     ...options.headers,
-  }
+  };
 
   try {
-    console.log(`Calling API: ${url}`, options)
-    const response = await fetch(url, options)
-    console.log(`API Response status: ${response.status}`)
+    console.log(`Calling API: ${url}`, options);
+    const response = await fetch(url, options);
+    console.log(`API Response status: ${response.status}`);
 
-    // Xử lý lỗi HTTP
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      console.error(`API Error Response:`, errorData)
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`API Error Response:`, errorData);
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json()
-    console.log(`API Response data:`, data)
-    return data.data || data
+    const data = await response.json();
+    console.log(`API Response data:`, data);
+    return data.data || data;
   } catch (error) {
-    console.error(`API Error at ${url}:`, error.message)
-    throw new Error(`Failed to fetch API at ${url}: ${error.message}`)
+    console.error(`API Error at ${url}:`, error.message);
+    throw new Error(`Failed to fetch API at ${url}: ${error.message}`);
   }
 }
 // Đơn hàng
@@ -180,6 +175,61 @@ export async function cancelOrder(orderId) {
     method: "PUT",
   })
   return response
+}
+
+// Thanh toán SEPay - Phiên bản cải tiến
+export async function createSepayTransaction(transactionData) {
+  try {
+    console.log("Tạo giao dịch SEPay:", transactionData);
+    const response = await fetchAPI("/sepay/create-transaction", {
+      method: "POST",
+      body: JSON.stringify(transactionData),
+    });
+    console.log("Kết quả tạo giao dịch SEPay:", JSON.stringify(response, null, 2));
+
+    if (!response.success) {
+      throw new Error(response.error || "Không thể tạo giao dịch SEPay");
+    }
+
+    if (!response.qrCodeUrl && !response.qr_code_url) {
+      throw new Error("Không nhận được qrCodeUrl từ SEPay");
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Lỗi tạo giao dịch SEPay:", error);
+    throw error;
+  }
+}
+
+export async function checkTransactionStatus(transactionId) {
+  try {
+    if (!transactionId) {
+      console.error("checkTransactionStatus: transactionId không được cung cấp");
+      throw new Error("Mã giao dịch không hợp lệ");
+    }
+
+    console.log("Kiểm tra trạng thái giao dịch:", transactionId);
+    const response = await fetchAPI(`/sepay/transaction/${transactionId}`);
+    console.log("Kết quả kiểm tra trạng thái:", response);
+    return response;
+  } catch (error) {
+    console.error("Lỗi kiểm tra trạng thái giao dịch:", error);
+    throw error;
+  }
+}
+
+export async function checkSepayConnection() {
+  try {
+    const response = await fetchAPI("/sepay/check-connection");
+    return response;
+  } catch (error) {
+    console.error("Lỗi kiểm tra kết nối SEPay:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
 }
 
 // Xác thực
