@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://thtstore-websitebandogiadung-backend.onrender.com/api";
 
 async function fetchAPI(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
