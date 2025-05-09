@@ -1,4 +1,7 @@
 const mongoose = require("mongoose")
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('Connected to MongoDB Atlas!'))
+  .catch(err => console.error('Connection error:', err));
 
 const OrderSchema = new mongoose.Schema({
   id: {
@@ -61,8 +64,8 @@ const OrderSchema = new mongoose.Schema({
   items: [
     {
       product_id: {
-        type: String,
-        ref: "Product",
+        type: String, 
+        ref: 'Product'
       },
       product_name: {
         type: String,

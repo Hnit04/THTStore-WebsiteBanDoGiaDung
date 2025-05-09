@@ -21,8 +21,7 @@ function LoginPage() {
 
   // Lấy redirect URL từ query params (nếu có)
   const searchParams = new URLSearchParams(location.search);
-  const redirectTo = searchParams.get("redirect") || "/";
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -35,7 +34,6 @@ function LoginPage() {
       setIsSubmitting(true);
       await login(email, password);
       toast.success("Đăng nhập thành công");
-      navigate(redirectTo);
     } catch (err) {
       toast.error(err.message || "Đã xảy ra lỗi, vui lòng thử lại");
     } finally {

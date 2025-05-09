@@ -41,7 +41,49 @@ async function fetchAPI(endpoint, options = {}) {
     throw new Error(`Failed to fetch API at ${url}: ${error.message}`)
   }
 }
+// Đơn hàng
+export async function  getOrders ({ startDate, endDate }) {
+  const token = localStorage.getItem('token');
+  console.log('api.js - Token:', token);
+  console.log('api.js - API Request:', `${API_URL}/orders/admin?startDate=${startDate}&endDate=${endDate}`);
+  
+  try {
+    const response = await axios.get(`${API_URL}/orders/admin`, {
+      params: { startDate, endDate },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log('api.js - API Response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('api.js - API Error:', error.response?.data || error.message);
+    throw error.response?.data || error;
+  }
+};
+export const getAdminOrders = async (startDate, endDate) => {
+  const response = await fetch(`/api/orders/orderCustomer?startDate=${startDate}&endDate=${endDate}`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch orders");
+  }
+  return response.json();
+};
 
+export const getTotalProducts = async () => {
+  const response = await fetch("/api/products?limit=1", {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch products");
+  }
+  return response.json();
+};
 // Sản phẩm
 export async function getProducts(options = {}) {
   const queryParams = new URLSearchParams()
@@ -92,25 +134,25 @@ export async function createOrder(orderData) {
   return response
 }
 
-export async function getOrders({ startDate, endDate }) {
-  const token = localStorage.getItem("token")
-  console.log("api.js - Token:", token)
-  console.log("api.js - API Request:", `${API_URL}/orders/admin?startDate=${startDate}&endDate=${endDate}`)
+// export async function getOrders({ startDate, endDate }) {
+//   const token = localStorage.getItem("token")
+//   console.log("api.js - Token:", token)
+//   console.log("api.js - API Request:", `${API_URL}/orders/admin?startDate=${startDate}&endDate=${endDate}`)
 
-  try {
-    const response = await axios.get(`${API_URL}/orders/admin`, {
-      params: { startDate, endDate },
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    console.log("api.js - API Response:", response.data)
-    return response.data
-  } catch (error) {
-    console.error("api.js - API Error:", error.response?.data || error.message)
-    throw error.response?.data || error
-  }
-}
+//   try {
+//     const response = await axios.get(`${API_URL}/orders/admin`, {
+//       params: { startDate, endDate },
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//       },
+//     })
+//     console.log("api.js - API Response:", response.data)
+//     return response.data
+//   } catch (error) {
+//     console.error("api.js - API Error:", error.response?.data || error.message)
+//     throw error.response?.data || error
+//   }
+// }
 
 export async function getAllUsers() {
   const response = await fetchAPI("/users/customer")
