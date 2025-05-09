@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "[ -f node_modules/.bin/vite ] && echo 'Vite is available' || echo 'Missing Vite'",
-    "build": "vite build",
+    "build": "chmod +x node_modules/.bin/vite && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -68,7 +68,7 @@
     "globals": "^16.0.0",
     "nodemon": "^3.1.10",
     "typescript": "^5.8.3",
-    "vite": "^6.3.1"
+    "vite": "^6.3.5"
   },
   "engines": {
     "node": ">=18.0.0"
