@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "engines": {
+    "node": "18.x"
+  },
   "builds": [
     {
       "src": "package.json",
@@ -25,7 +28,7 @@
     {
       "src": "/[^.]+",
       "dest": "/dist/index.html",
-      "status": 200
+      "status": 200"
     }
   ],
   "framework": "vite",
