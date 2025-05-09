@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "if exist node_modules\\.bin\\vite (echo Vite is available) else (echo Missing Vite)",
+    "prebuild": "[ -f node_modules/.bin/vite ] && echo 'Vite is available' || echo 'Missing Vite'",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
