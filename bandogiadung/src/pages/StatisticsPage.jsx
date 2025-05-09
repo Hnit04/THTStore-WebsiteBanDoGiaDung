@@ -3,6 +3,8 @@ import { BarChart, LineChart, PieChart, ArrowUpRight, Package, DollarSign, Calen
 import { getAllOrders } from '../lib/api.js';
 import ApexCharts from 'apexcharts';
 import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas'; // Import html2canvas
+import jsPDF from 'jspdf';
 
 const StatisticsPage = () => {
   const [orders, setOrders] = useState([]);
@@ -12,10 +14,8 @@ const StatisticsPage = () => {
   const chartRef = useRef(null);
   const [dateRange, setDateRange] = useState({
     start: '2025-01-01',
-    end: '2025-12-31'
+    end: '2025-12-30'
   });
-  const [employeeName, setEmployeeName] = useState(''); // Fetched from database
-
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [chartData, setChartData] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
@@ -29,29 +29,35 @@ const StatisticsPage = () => {
 
   // Fetch employee name from database
   useEffect(() => {
-    const fetchEmployeeName = async () => {
+    const fetchEmployeeData = async () => {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
           throw new Error('No token found, please log in.');
         }
-        const response = await fetch('/api/users/me', {
+        console.log('Token used:', token); // Log token để kiểm tra
+        const response = await fetch('/api/users/profile', {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
         if (!response.ok) {
-          throw new Error('Failed to fetch user data');
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
         const data = await response.json();
-        setEmployeeName(data.name || 'Unknown User');
+        console.log('API response from /api/users/profile:', data); // Log phản hồi từ API
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to fetch user data');
+        }
+        setEmployeeName(data.data.fullName || 'Unknown User'); 
       } catch (error) {
-        console.error('Error fetching employee name:', error);
+        console.error('Error fetching employee data:', error.message);
         setEmployeeName('Unknown User');
       }
     };
-    fetchEmployeeName();
+    fetchEmployeeData();
   }, []);
 
   useEffect(() => {
@@ -329,109 +335,94 @@ const StatisticsPage = () => {
   const percentChange = 12.4;
 
   const exportToExcel = () => {
-    try {
-      // Get current date (May 09, 2025)
-      const currentDate = new Date('2025-05-09');
-      const currentDateStr = currentDate.toLocaleDateString('vi-VN');
+    console.log('Export button clicked');
+    if (loading || orders.length === 0) {
+      console.log('Export aborted: loading=', loading, 'orders.length=', orders.length);
+      setError('Dữ liệu đang tải hoặc không có đơn hàng để xuất. Vui lòng chờ hoặc kiểm tra lại.');
+      return;
+    }
 
-      // Filter orders for the current date
-      const todayOrders = orders.filter(order => {
-        const createdAt = new Date(order.created_at);
-        return createdAt.toLocaleDateString('vi-VN') === currentDateStr && order.payment_status === "completed";
+    try {
+      console.log('Starting export process with orders:', orders.length);
+      const currentDate = new Date();
+      const currentDateStr = currentDate.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
       });
 
-      if (todayOrders.length === 0) {
-        setError(`Không có đơn hàng hoàn thành nào vào ngày ${currentDateStr}.`);
+      if (!chartData || chartData.length === 0) {
+        setError('Không có dữ liệu doanh thu để xuất. Vui lòng kiểm tra khoảng thời gian hoặc dữ liệu đơn hàng.');
         return;
       }
 
-      // Prepare detailed order data
-      const orderData = todayOrders.map((order, index) => ({
-        'Mã Đơn Hàng': order.id || `order-${index}`,
-        'Ngày Đặt Hàng': new Date(order.created_at).toLocaleDateString('vi-VN'),
-        'Sản Phẩm': order.items && order.items[0]?.product_name || 'Sản phẩm không xác định',
-        'Số Tiền': formatCurrency(order.total_amount || 0)
+      console.log('Chart data for export:', chartData);
+
+      const exportData = chartData.map(item => ({
+        'Ngày/Tháng/Năm': item.label,
+        'Doanh Thu': formatCurrency(item.revenue),
       }));
 
-      // Calculate total revenue for the day
-      const totalRevenueToday = todayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+      const totalRevenue = chartData.reduce((sum, item) => sum + item.revenue, 0);
+      console.log('Total revenue for export:', totalRevenue);
 
-      // Create worksheet starting with metadata
-      const ws = XLSX.utils.json_to_sheet([], { skipHeader: true });
-
-      // Add title
-      const title = `BÁO CÁO DOANH THU NGÀY ${currentDateStr}`;
-      XLSX.utils.sheet_add_aoa(ws, [[title]], { origin: 'A1' });
-
-      // Add metadata (Statistics Date and Employee Name)
-      XLSX.utils.sheet_add_aoa(ws, [
-        ['Ngày Thống Kê:', currentDateStr],
-        ['Nhân Viên Thống Kê:', employeeName || 'Unknown User']
-      ], { origin: 'A2' });
-
-      // Add a blank row
-      XLSX.utils.sheet_add_aoa(ws, [['']], { origin: 'A4' });
-
-      // Add order data table
-      XLSX.utils.sheet_add_json(ws, orderData, {
-        origin: 'A5',
-        header: ['Mã Đơn Hàng', 'Ngày Đặt Hàng', 'Sản Phẩm', 'Số Tiền'],
-        skipHeader: false
-      });
-
-      // Add summary row (Total Revenue)
-      const summaryRowPosition = 5 + orderData.length + 1; // After the table
-      XLSX.utils.sheet_add_aoa(ws, [
-        ['Tổng Doanh Thu:', '', '', formatCurrency(totalRevenueToday)]
-      ], { origin: `A${summaryRowPosition}` });
-
-      // Merge cells for title and summary label
-      ws['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // Title
-        { s: { r: summaryRowPosition - 1, c: 0 }, e: { r: summaryRowPosition - 1, c: 2 } } // Total Revenue label
-      ];
-
-      // Set column widths
-      ws['!cols'] = [
-        { wch: 15 }, // Mã Đơn Hàng
-        { wch: 20 }, // Ngày Đặt Hàng
-        { wch: 30 }, // Sản Phẩm
-        { wch: 20 }  // Số Tiền
-      ];
-
-      // Apply styles
-      ws['A1'].s = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center' } };
-      ws['A2'].s = { font: { bold: true } };
-      ws['A3'].s = { font: { bold: true } };
-      ws['A5'].s = { font: { bold: true }, alignment: { horizontal: 'center' } };
-      ws['B5'].s = { font: { bold: true }, alignment: { horizontal: 'center' } };
-      ws['C5'].s = { font: { bold: true }, alignment: { horizontal: 'center' } };
-      ws['D5'].s = { font: { bold: true }, alignment: { horizontal: 'center' } };
-      ws[`A${summaryRowPosition}`].s = { font: { bold: true }, alignment: { horizontal: 'right' } };
-      ws[`D${summaryRowPosition}`].s = { font: { bold: true } };
-
-      // Create workbook and add worksheet
       const wb = XLSX.utils.book_new();
+      const wsData = [
+        [`BÁO CÁO DOANH THU TỪ ${new Date(dateRange.start).toLocaleDateString('vi-VN')} ĐẾN ${new Date(dateRange.end).toLocaleDateString('vi-VN')}`],
+        [''],
+        ['Khoảng Thời Gian:', `${new Date(dateRange.start).toLocaleDateString('vi-VN')} - ${new Date(dateRange.end).toLocaleDateString('vi-VN')}`],
+        ['Ngày Thực Hiện Thống Kê:', currentDateStr],
+        [''],
+        ['Ngày/Tháng/Năm', 'Doanh Thu'],
+        ...exportData.map(item => Object.values(item)),
+        [''],
+        ['Tổng Doanh Thu:', formatCurrency(totalRevenue)],
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+        { s: { r: wsData.length - 1, c: 0 }, e: { r: wsData.length - 1, c: 0 } },
+      ];
+
+      ws['!cols'] = [
+        { wch: 20 },
+        { wch: 20 },
+      ];
+
+      const styleTitle = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center' } };
+      const styleHeader = { font: { bold: true }, alignment: { horizontal: 'center' } };
+      const styleSummary = { font: { bold: true }, alignment: { horizontal: 'right' } };
+
+      ws['A1'].s = styleTitle;
+      ws['A3'].s = { font: { bold: true } };
+      ws['A4'].s = { font: { bold: true } };
+      ws['A5'].s = { font: { bold: true } };
+      ws['A6'].s = { font: { bold: true } };
+      ['A8', 'B8'].forEach(cell => (ws[cell].s = styleHeader));
+      ws[`A${wsData.length}`].s = styleSummary;
+      ws[`B${wsData.length}`].s = { font: { bold: true } };
+
       XLSX.utils.book_append_sheet(wb, ws, 'Báo Cáo Doanh Thu');
 
-      // Generate binary string
       const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-
-      // Create Blob and trigger download
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `BaoCaoDoanhThu_${currentDate.toISOString().slice(0, 10)}.xlsx`;
+      link.download = `BaoCaoDoanhThu_${new Date(dateRange.start).toISOString().slice(0, 10)}_${new Date(dateRange.end).toISOString().slice(0, 10)}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+      console.log('Excel file created and download triggered');
     } catch (error) {
-      console.error('Error exporting to Excel:', error);
-      setError('Không thể xuất báo cáo Excel. Vui lòng thử lại.');
+      console.error('Export failed:', error);
+      setError(`Không thể xuất báo cáo Excel: ${error.message}. Vui lòng thử lại.`);
     }
   };
+  
 
   useEffect(() => {
     if (orders.length > 0) {
@@ -622,15 +613,7 @@ const StatisticsPage = () => {
               <span>Xuất báo cáo</span>
             </div>
           </button>
-          <button 
-           
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            <div className="flex items-center space-x-1">
-              <ArrowUpRight className="w-4 h-4" />
-              <span>Tải xuống Excel</span>
-            </div>
-          </button>
+          
         </div>
       </div>
 

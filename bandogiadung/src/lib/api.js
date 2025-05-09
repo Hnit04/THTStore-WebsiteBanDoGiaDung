@@ -184,13 +184,27 @@ export async function cancelOrder(orderId) {
 
 // Xác thực
 export async function login(email, password) {
-  const response = await fetchAPI("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  })
-
-  localStorage.setItem("token", response.token)
-  return response
+  try {
+    console.log("login - Attempting with email:", email);
+    const response = await fetchAPI("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    
+    // Verify token was received and save it
+    if (!response.token) {
+      console.error("login - No token received");
+      throw new Error("No token received from server");
+    }
+    
+    localStorage.setItem("token", response.token);
+    console.log("login - Token saved to localStorage");
+    
+    return response;
+  } catch (error) {
+    console.error("login - Failed:", error.message);
+    throw error;
+  }
 }
 
 export async function register(userData) {
@@ -257,13 +271,40 @@ export async function logout() {
 }
 
 export async function getCurrentUser() {
+  console.log("🔍 getCurrentUser - Starting user verification");
+  const token = localStorage.getItem("token");
+  
+  if (!token) {
+    console.warn("getCurrentUser - No token in localStorage");
+    throw new Error("No authentication token found");
+  }
+  
   try {
-    const response = await fetchAPI("/auth/me")
-    return response
+    console.log("getCurrentUser - Fetching user data with token");
+    const response = await fetchAPI("/auth/me");
+    
+    // Validate the response thoroughly
+    if (!response) {
+      console.error("getCurrentUser - Empty response");
+      throw new Error("Empty response from server");
+    }
+    
+    if (!response.email) {
+      console.error("getCurrentUser - Missing email in response:", response);
+      throw new Error("Missing email in user data");
+    }
+    
+    if (!response.role) {
+      console.error("getCurrentUser - Missing role in response:", response);
+      throw new Error("Missing role in user data");
+    }
+    
+    console.log("getCurrentUser - Successfully verified user:", response.email, "Role:", response.role);
+    return response;
   } catch (error) {
-    console.error("Failed to fetch current user:", error.message || error)
-    localStorage.removeItem("token")
-    return null
+    console.error("getCurrentUser - Failed:", error.message);
+    // Don't clear token here, let the auth context handle it
+    throw error;
   }
 }
 

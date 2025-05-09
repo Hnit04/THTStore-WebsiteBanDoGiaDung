@@ -5,57 +5,119 @@ import toast from "react-hot-toast";
 
 const AuthContext = createContext();
 
+// Helper function to check if token exists in localStorage
+const hasToken = () => {
+  const token = localStorage.getItem("token");
+  console.log("Token check:", token ? "Token exists" : "No token");
+  return !!token;
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
 
+  // Enhanced function to fetch user data
+  const fetchUserData = async () => {
+    console.log("Fetching user data...");
+    try {
+      const userData = await getCurrentUser();
+      console.log("User data received:", userData);
+      if (userData && userData.role) {
+        console.log("Valid user data, setting user state");
+        setUser(userData);
+        return true;
+      } else {
+        console.warn("Invalid user data received");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error.message);
+      return false;
+    }
+  };
+
+  // Check authentication status on initial load and when token changes
   useEffect(() => {
+    console.log("🔒 Auth check starting...");
     const checkAuthStatus = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (token) {
-          const userData = await getCurrentUser();
-          setUser((prev) => {
-            if (JSON.stringify(prev) !== JSON.stringify(userData)) {
-              console.log("Check auth user:", userData);
-              return userData;
-            }
-            return prev;
-          });
+        setLoading(true);
+        
+        if (hasToken()) {
+          console.log("Token found, verifying user...");
+          const success = await fetchUserData();
+          
+          if (!success) {
+            console.warn("Auth check failed - clearing token");
+            localStorage.removeItem("token");
+            setUser(null);
+          }
+        } else {
+          console.log("No token found during auth check");
+          setUser(null);
         }
       } catch (error) {
-        console.error("Error checking auth status:", error);
-        setUser(null);
+        console.error("Auth check error:", error.message);
+        setError(error.message || "Không thể kiểm tra trạng thái xác thực");
         localStorage.removeItem("token");
+        setUser(null);
       } finally {
+        console.log("Auth check complete, user:", user?.email || "none");
         setLoading(false);
+        setAuthChecked(true);
       }
     };
-
+  
     checkAuthStatus();
+    
+    // Add event listener for storage changes (in case token changes in another tab)
+    const handleStorageChange = (e) => {
+      if (e.key === "token") {
+        console.log("Token changed in storage, rechecking auth...");
+        checkAuthStatus();
+      }
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, []);
 
   const login = async (email, password) => {
+    
     try {
       setLoading(true);
       setError(null);
+      console.log(`Attempting login for ${email}...`);
+      
       const data = await apiLogin(email, password);
-      setUser((prev) => {
-        if (JSON.stringify(prev) !== JSON.stringify(data.user)) {
-          console.log("Login user:", data.user);
-          return data.user;
+      console.log("Login response:", data);
+      
+      if (data && data.user && data.token) {
+        console.log("Setting user after login:", data.user);
+        setUser(data.user);
+        localStorage.setItem("token", data.token); 
+        // Verify token was saved properly
+        const savedToken = localStorage.getItem("token");
+        console.log("Token saved:", savedToken ? "Yes" : "No");
+        
+        // Chuyển hướng dựa trên vai trò sau khi đăng nhập
+        if (data.user.role === "admin") {
+          console.log("Redirecting to admin dashboard");
+          navigate("/admin", { replace: true });
+        } else {
+          console.log("Redirecting to home page");
+          navigate("/", { replace: true });
         }
-        return prev;
-      });
-      // Chuyển hướng dựa trên vai trò sau khi đăng nhập
-      if (data.user.role === "admin") {
-        navigate("/admin", { replace: true });
+        toast.success("Đăng nhập thành công");
       } else {
-        navigate("/", { replace: true });
+        throw new Error("Dữ liệu đăng nhập không hợp lệ");
       }
-      toast.success("Đăng nhập thành công");
+      
       return data;
     } catch (err) {
       console.error("Login error:", err);
@@ -132,7 +194,7 @@ export function AuthProvider({ children }) {
       setLoading(true);
       setError(null);
       console.log(`Verifying reset code for ${email}: ${resetCode}`);
-      const data = await verifyResetCode(email, resetCode);
+      const data = await apiVerifyResetCode(email, resetCode);
       console.log(`Reset code verified for ${email}`, data);
       return data;
     } catch (err) {
@@ -170,10 +232,14 @@ export function AuthProvider({ children }) {
       await apiLogout();
       setUser(null);
       localStorage.removeItem("token");
+      navigate("/login", { replace: true }); 
       toast.success("Đăng xuất thành công");
-      navigate("/login", { replace: true });
     } catch (err) {
       console.error("Logout error:", err);
+      // Still remove token and user even if logout API fails
+      setUser(null);
+      localStorage.removeItem("token");
+      navigate("/login", { replace: true });
       toast.error("Đăng xuất thất bại");
       throw err;
     } finally {
@@ -181,11 +247,15 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Check if user is admin
+  const isAdmin = user && user.role === "admin";
+
   const value = useMemo(
     () => ({
       user,
       loading,
       error,
+      authChecked,
       login,
       register,
       verifyEmail,
@@ -194,8 +264,9 @@ export function AuthProvider({ children }) {
       resetPassword,
       logout,
       isAuthenticated: !!user,
+      isAdmin,
     }),
-    [user, loading, error]
+    [user, loading, error, authChecked, isAdmin]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
