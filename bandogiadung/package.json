@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "[ -f node_modules/.bin/vite ] && echo 'Vite is available' || echo 'Missing Vite'",
-    "build": "chmod +x node_modules/.bin/vite && vite build",
+    "prebuild": "node -e \"if (require('fs').existsSync('node_modules/.bin/vite')) { console.log('Vite is available'); } else { console.log('Missing Vite'); process.exit(1); }\"",
+    "build": "node -e \"require('vite').build()\"",
     "lint": "eslint .",
     "preview": "vite preview"
   },
