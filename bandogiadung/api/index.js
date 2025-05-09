@@ -1,18 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-
-// Import routes từ thư mục server của bạn
-import authRoutes from '../server/routes/authRoutes.js';
-import productRoutes from '../server/routes/productRoutes.js';
-import categoryRoutes from '../server/routes/categoryRoutes.js';
-import cartRoutes from '../server/routes/cartRoutes.js';
-import orderRoutes from '../server/routes/orderRoutes.js';
-import userRoutes from '../server/routes/userRoutes.js';
-
-// Load env vars
-dotenv.config();
+import authRoutes from '../../server/routes/authRoutes.js';
+// Import các routes khác tương tự
 
 // Khởi tạo Express app
 const app = express();
@@ -21,36 +11,34 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/users', userRoutes);
-
-// Connect to MongoDB
+// Kết nối MongoDB
 const connectDB = async () => {
-    try {
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log('MongoDB connected');
-    } catch (error) {
-        console.error('MongoDB connection error:', error.message);
-        process.exit(1);
-    }
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('MongoDB connected');
+  } catch (error) {
+    console.error('MongoDB connection error:', error.message);
+    throw error;
+  }
 };
 
-// Kết nối database trước khi khởi động server
-connectDB();
+// Routes
+app.use('/api/auth', authRoutes);
+// Thêm các routes khác
 
-// Error handler
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        success: false,
-        error: err.message || 'Server Error',
-    });
-});
-
-// Vercel serverless function handler
-export default app;
+// Export dưới dạng Vercel serverless function
+export default async (req, res) => {
+  try {
+    // Kết nối DB cho mỗi request (hoặc tối ưu hơn bằng connection pooling)
+    await connectDB();
+    
+    // Xử lý request bằng Express app
+    app(req, res);
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
