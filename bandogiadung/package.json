@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "node -e \"if (require('fs').existsSync('node_modules/.bin/vite')) { console.log('Vite is available'); } else { console.log('Missing Vite'); process.exit(1); }\"",
-    "build": "npx vite build",
+    "build": "node -e \"require('vite').build()\"",
     "lint": "eslint .",
     "preview": "vite preview"
   },
