@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import toast from "react-hot-toast";
@@ -17,11 +17,16 @@ function LoginPage() {
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const { login, forgotPassword, verifyResetCode, resetPassword, error } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // Lấy redirect URL từ query params (nếu có)
-  const searchParams = new URLSearchParams(location.search);
   
+  const { isAuthenticated, authChecked } = useAuth();
+
+  useEffect(() => {
+    if (authChecked && isAuthenticated) {
+      navigate('/admin');
+    }
+  }, [isAuthenticated, authChecked, navigate]);
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 

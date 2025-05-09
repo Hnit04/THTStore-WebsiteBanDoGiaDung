@@ -13,4 +13,5 @@ router.get("/orders", protect, getAllOrders) // Thêm route mới để lấy da
 router.post("/product",protect, createProduct)
 router.put("/updateProduct/:id",protect, updateProduct)
 router.get("/myorders/:email", protect, getAllOrdersById) 
+
 module.exports = router
