@@ -11,7 +11,12 @@ import { createSepayTransaction, checkTransactionStatus } from "../lib/api.js";
 import SepayQRCode from "../components/payment/SepayQRCode.jsx";
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || "https://thtstore-websitebandogiadung-backend.onrender.com/";
-const socket = io(SOCKET_URL, { autoConnect: true });
+const socket = io(SOCKET_URL, {
+  autoConnect: true,
+  reconnection: true, // Tự động kết nối lại
+  reconnectionAttempts: Infinity, // Thử kết nối lại không giới hạn
+  reconnectionDelay: 1000, // Delay 1 giây giữa các lần thử
+});
 
 function CheckoutPage() {
   const { cart, getCartTotal, removeFromCart } = useCart();
@@ -23,6 +28,7 @@ function CheckoutPage() {
   const [transaction, setTransaction] = useState(null);
   const [loading, setLoading] = useState(false);
   const [transactionStatus, setTransactionStatus] = useState(null);
+  const [manualCheckLoading, setManualCheckLoading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -32,7 +38,7 @@ function CheckoutPage() {
   }, [cart, location.search]);
 
   const subtotal = selectedItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const shipping = subtotal > 500000 ? 0 : 30000;
+  const shipping = subtotal > 500000 ? 0 : 1000;
   const total = subtotal + shipping;
 
   useEffect(() => {
@@ -42,6 +48,12 @@ function CheckoutPage() {
     });
     socket.on("disconnect", () => {
       console.log("Socket disconnected");
+    });
+    socket.on("reconnect", (attempt) => {
+      console.log(`Socket reconnected after ${attempt} attempts`);
+    });
+    socket.on("reconnect_error", (error) => {
+      console.error("Socket reconnection error:", error);
     });
 
     if (transaction) {
@@ -77,7 +89,7 @@ function CheckoutPage() {
         } catch (error) {
           console.error("Fallback check failed:", error);
         }
-      }, 5000); // Kiểm tra mỗi 5 giây
+      }, 10000); // Kiểm tra mỗi 10 giây
 
       return () => {
         socket.off("transactionUpdate", handleTransactionUpdate);
@@ -96,6 +108,28 @@ function CheckoutPage() {
     } catch (error) {
       console.error("Lỗi xử lý sau thanh toán:", error);
       toast.error("Đã xảy ra lỗi sau khi thanh toán. Vui lòng kiểm tra đơn hàng.");
+    }
+  };
+
+  const handleManualCheck = async () => {
+    if (!transaction) return;
+    setManualCheckLoading(true);
+    try {
+      const statusResponse = await checkTransactionStatus(transaction.transactionId);
+      console.log("Manual check status response:", JSON.stringify(statusResponse, null, 2));
+      if (statusResponse.status === "SUCCESS") {
+        handlePaymentSuccess(transaction.transactionId);
+      } else if (statusResponse.status === "FAILED") {
+        toast.error("Thanh toán thất bại. Vui lòng thử lại.");
+        setTransaction(null);
+      } else {
+        toast.info("Giao dịch vẫn đang chờ xử lý. Vui lòng thử lại sau.");
+      }
+    } catch (error) {
+      console.error("Manual check failed:", error);
+      toast.error("Không thể kiểm tra trạng thái giao dịch. Vui lòng thử lại.");
+    } finally {
+      setManualCheckLoading(false);
     }
   };
 
@@ -266,13 +300,24 @@ function CheckoutPage() {
                 </div>
 
                 {transaction ? (
-                    <SepayQRCode
-                        transactionId={transaction.transactionId}
-                        qrCodeUrl={transaction.qrCodeUrl}
-                        amount={total}
-                        onSuccess={handlePaymentSuccess}
-                        onError={cancelTransaction}
-                    />
+                    <>
+                      <SepayQRCode
+                          transactionId={transaction.transactionId}
+                          qrCodeUrl={transaction.qrCodeUrl}
+                          amount={total}
+                          onSuccess={handlePaymentSuccess}
+                          onError={cancelTransaction}
+                      />
+                      <button
+                          onClick={handleManualCheck}
+                          disabled={manualCheckLoading}
+                          className={`mt-4 block w-full text-center py-2 rounded-md font-medium ${
+                              manualCheckLoading ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white"
+                          }`}
+                      >
+                        {manualCheckLoading ? "Đang kiểm tra..." : "Kiểm tra trạng thái giao dịch"}
+                      </button>
+                    </>
                 ) : (
                     <button
                         onClick={handlePayment}
