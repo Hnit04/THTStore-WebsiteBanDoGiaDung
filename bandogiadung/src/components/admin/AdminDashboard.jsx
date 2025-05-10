@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext.jsx';
 import { getCurrentUser } from '../../lib/api.js';
 
 const adminMenuItems = [
-  { to: '/admin'},
+  
   { to: '/admin/products', label: 'Sản phẩm', icon: Package },
   { to: '/admin/customers', label: 'Khách hàng', icon: Users },
   { to: '/admin/orders', label: 'Hóa đơn', icon: FileText },
