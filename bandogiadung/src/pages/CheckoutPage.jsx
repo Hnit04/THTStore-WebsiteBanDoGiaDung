@@ -30,6 +30,14 @@ function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [transactionStatus, setTransactionStatus] = useState(null);
   const [manualCheckLoading, setManualCheckLoading] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState({
+    fullName: "",
+    phone: "",
+    address: "",
+    city: "",
+    district: "",
+    ward: "",
+  });
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -37,6 +45,20 @@ function CheckoutPage() {
     const selected = cart.filter((item) => itemIds.includes(item._id));
     setSelectedItems(selected);
   }, [cart, location.search]);
+
+  // Đồng bộ thông tin user khi component mount hoặc user thay đổi
+  useEffect(() => {
+    if (user) {
+      setCustomerInfo({
+        fullName: user.fullName || "",
+        phone: user.phone || "",
+        address: user.address || "",
+        city: user.city || "",
+        district: user.district || "",
+        ward: user.ward || "",
+      });
+    }
+  }, [user]);
 
   const subtotal = selectedItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const shipping = subtotal > 500000 ? 0 : 1000;
@@ -114,12 +136,12 @@ function CheckoutPage() {
         email: user?.email || "unknown@example.com",
         user_fullName: user?.fullName || "Unknown User",
         user_phone: user?.phone || "Chưa có số điện thoại",
-        name: user?.fullName || "Unknown Receiver",
-        phone: user?.phone || "Chưa có số điện thoại",
+        name: customerInfo.fullName || user?.fullName || "Unknown Receiver",
+        phone: customerInfo.phone || user?.phone || "Chưa có số điện thoại",
         status: "processing",
         total_amount: total,
-        shipping_address: user?.address || "Chưa có địa chỉ",
-        shipping_city: user?.city || "Chưa có thành phố",
+        shipping_address: customerInfo.address || user?.address || "Chưa có địa chỉ",
+        shipping_city: customerInfo.city || user?.city || "Chưa có thành phố",
         shipping_postal_code: user?.postalCode || "700000",
         shipping_country: user?.country || "Vietnam",
         payment_method: "banking",
@@ -280,6 +302,77 @@ function CheckoutPage() {
         <h1 className="text-3xl font-bold mb-6">Thanh Toán</h1>
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="w-full lg:w-2/3">
+            {/* Form thông tin khách hàng */}
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <h2 className="text-lg font-bold mb-4">Thông tin khách hàng</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Họ và tên</label>
+                  <input
+                      type="text"
+                      name="fullName"
+                      value={customerInfo.fullName}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, fullName: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Số điện thoại</label>
+                  <input
+                      type="tel"
+                      name="phone"
+                      value={customerInfo.phone}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">Địa chỉ</label>
+                  <input
+                      type="text"
+                      name="address"
+                      value={customerInfo.address}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Thành phố</label>
+                  <input
+                      type="text"
+                      name="city"
+                      value={customerInfo.city}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, city: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Quận/Huyện</label>
+                  <input
+                      type="text"
+                      name="district"
+                      value={customerInfo.district}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, district: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Phường/Xã</label>
+                  <input
+                      type="text"
+                      name="ward"
+                      value={customerInfo.ward}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, ward: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Chi tiết đơn hàng */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-bold mb-4">Chi tiết đơn hàng</h2>
               <table className="w-full">
