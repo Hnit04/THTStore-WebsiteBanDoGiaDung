@@ -20,7 +20,7 @@ const SepayQRCode = ({ transactionId, qrCodeUrl, amount, onSuccess, onError }) =
 
         console.log("SepayQRCode: Khởi tạo với transactionId =", transactionId);
 
-        const socket = io("http://localhost:5000", { withCredentials: true });
+        const socket = io("https://thtstore-websitebandogiadung-backend.onrender.com/api", { withCredentials: true });
         let statusInterval;
 
         socket.on("connect", () => {

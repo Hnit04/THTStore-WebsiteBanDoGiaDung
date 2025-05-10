@@ -39,7 +39,7 @@
     "lodash": "^4.17.21",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.503.0",
-    "mongoose": "^8.14.0",
+    "mongoose": "^8.14.2",
     "nodemailer": "^7.0.2",
     "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
