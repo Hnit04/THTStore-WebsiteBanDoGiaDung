@@ -36,7 +36,7 @@ const AdminOverview = () => {
       y: {
         beginAtZero: true,
         ticks: {
-          callback: (value) => (value >= 1000000 ? `${value / 1000000}M` : value >= 1000 ? `${value / 1000}K` : value),
+          callback: (value) => (value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value),
         },
       },
     },
@@ -61,19 +61,9 @@ const AdminOverview = () => {
         }
 
         // Fetch đơn hàng
-        let ordersResponse;
-        try {
-          ordersResponse = await getAdminOrders(startDate, endDate);
-        } catch (err) {
-          console.error("Lỗi khi gọi API /api/orders/orderCustomer:", {
-            message: err.message,
-            status: err.status,
-            responseText: err.responseText,
-          });
-          throw new Error("Không thể lấy dữ liệu đơn hàng: " + err.message);
-        }
+        const ordersResponse = await getAdminOrders(startDate, endDate);
+        console.log('Orders API Response:', ordersResponse);
 
-        // Kiểm tra response
         if (!ordersResponse.success) {
           throw new Error(ordersResponse.error || "Lỗi từ API đơn hàng");
         }
@@ -83,15 +73,17 @@ const AdminOverview = () => {
         const monthlyRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
 
         // Tính số khách hàng (email duy nhất)
-        const uniqueCustomers = [...new Set(orders.map((order) => order.email))].length;
+        const uniqueCustomers = [...new Set(orders.map((order) => order.email || ''))].length;
 
         // Tính doanh thu và khách hàng theo ngày
         const revenueByDay = {};
         const customersByDay = {};
         orders.forEach((order) => {
           const date = formatDate(order.created_at, "YYYY-MM-DD");
-          revenueByDay[date] = (revenueByDay[date] || 0) + (order.total_amount || 0);
-          customersByDay[date] = customersByDay[date] ? [...new Set([...customersByDay[date], order.email])] : [order.email];
+          if (date) {
+            revenueByDay[date] = (revenueByDay[date] || 0) + (order.total_amount || 0);
+            customersByDay[date] = customersByDay[date] ? [...new Set([...customersByDay[date], order.email || ''])] : [order.email || ''];
+          }
         });
 
         // Chuẩn bị dữ liệu biểu đồ
@@ -135,16 +127,18 @@ const AdminOverview = () => {
         orders.forEach((order) => {
           order.items.forEach((item) => {
             const key = item.product_id;
-            if (!productSales[key]) {
-              productSales[key] = {
-                id: key,
-                name: item.product_name,
-                quantitySold: 0,
-                revenue: 0,
-              };
+            if (key) {
+              if (!productSales[key]) {
+                productSales[key] = {
+                  id: key,
+                  name: item.product_name || 'Sản phẩm không xác định',
+                  quantitySold: 0,
+                  revenue: 0,
+                };
+              }
+              productSales[key].quantitySold += item.quantity || 0;
+              productSales[key].revenue += (item.quantity || 0) * (item.product_price || 0);
             }
-            productSales[key].quantitySold += item.quantity;
-            productSales[key].revenue += item.quantity * item.product_price;
           });
         });
         const topProducts = Object.values(productSales)
@@ -152,19 +146,9 @@ const AdminOverview = () => {
           .slice(0, 5);
 
         // Fetch tổng sản phẩm
-        let productsResponse;
-        try {
-          productsResponse = await getTotalProducts();
-        } catch (err) {
-          console.error("Lỗi khi gọi API /api/products:", {
-            message: err.message,
-            status: err.status,
-            responseText: err.responseText,
-          });
-          throw new Error("Không thể lấy dữ liệu sản phẩm: " + err.message);
-        }
+        const productsResponse = await getTotalProducts();
+        console.log('Products API Response:', productsResponse);
 
-        // Kiểm tra response
         if (!productsResponse.success) {
           throw new Error(productsResponse.error || "Lỗi từ API sản phẩm");
         }
