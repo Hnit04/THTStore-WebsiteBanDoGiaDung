@@ -30,6 +30,7 @@ function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [transactionStatus, setTransactionStatus] = useState(null);
   const [manualCheckLoading, setManualCheckLoading] = useState(false);
+  const [isPaymentProcessed, setIsPaymentProcessed] = useState(false); // Thêm state để kiểm soát
   const [customerInfo, setCustomerInfo] = useState({
     fullName: "",
     phone: "",
@@ -91,7 +92,7 @@ function CheckoutPage() {
         }
         if (data.transactionId === transaction.transactionId) {
           setTransactionStatus(data.status);
-          if (data.status === "SUCCESS") {
+          if (data.status === "SUCCESS" && !isPaymentProcessed) {
             handlePaymentSuccess(transaction.transactionId);
           } else if (data.status === "FAILED") {
             toast.error("Thanh toán thất bại. Vui lòng thử lại.");
@@ -107,7 +108,7 @@ function CheckoutPage() {
         try {
           const statusResponse = await checkTransactionStatus(transaction.transactionId);
           console.log("Fallback check status response:", JSON.stringify(statusResponse, null, 2));
-          if (statusResponse.status === "SUCCESS") {
+          if (statusResponse.status === "SUCCESS" && !isPaymentProcessed) {
             handlePaymentSuccess(transaction.transactionId);
             clearInterval(checkStatusInterval);
           } else if (statusResponse.status === "FAILED") {
@@ -125,9 +126,12 @@ function CheckoutPage() {
         clearInterval(checkStatusInterval);
       };
     }
-  }, [transaction]);
+  }, [transaction, isPaymentProcessed]);
 
   const handlePaymentSuccess = async (transactionId) => {
+    if (isPaymentProcessed) return; // Ngăn gọi lại nếu đã xử lý
+    setIsPaymentProcessed(true); // Đánh dấu là đã xử lý
+
     toast.success("Thanh toán thành công!");
     try {
       const orderPayload = {
@@ -177,13 +181,12 @@ function CheckoutPage() {
         },
       });
 
-      navigate("/order-confirmation", {
-        state: { transactionId, items: selectedItems, total, orderId: orderData.data.id },
-      });
+      // Chuyển hướng về trang sản phẩm
+      navigate("/products");
     } catch (error) {
       console.error("Lỗi xử lý sau thanh toán:", error);
       toast.error("Đã xảy ra lỗi sau khi thanh toán. Vui lòng kiểm tra đơn hàng.");
-      navigate("/order-confirmation", { state: { transactionId, error: true } });
+      navigate("/products", { state: { error: true } });
     }
   };
 
@@ -193,7 +196,7 @@ function CheckoutPage() {
     try {
       const statusResponse = await checkTransactionStatus(transaction.transactionId);
       console.log("Manual check status response:", JSON.stringify(statusResponse, null, 2));
-      if (statusResponse.status === "SUCCESS") {
+      if (statusResponse.status === "SUCCESS" && !isPaymentProcessed) {
         handlePaymentSuccess(transaction.transactionId);
       } else if (statusResponse.status === "FAILED") {
         toast.error("Thanh toán thất bại. Vui lòng thử lại.");
@@ -257,6 +260,7 @@ function CheckoutPage() {
       });
 
       setTransactionStatus("PENDING");
+      setIsPaymentProcessed(false); // Reset trạng thái khi bắt đầu giao dịch mới
 
       toast.success("Đã tạo giao dịch. Vui lòng quét mã QR để thanh toán.");
     } catch (error) {
@@ -278,6 +282,7 @@ function CheckoutPage() {
   const cancelTransaction = () => {
     setTransaction(null);
     setTransactionStatus(null);
+    setIsPaymentProcessed(false); // Reset trạng thái khi hủy giao dịch
     toast.success("Đã hủy giao dịch.");
   };
 
