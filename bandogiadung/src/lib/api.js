@@ -81,6 +81,14 @@ export const getTotalProducts = async () => {
   }
   return response.json();
 };
+export const getTotalCustomers = async () => {
+  try {
+    const data = await apiRequest("/api/customers", "GET");
+    return data;
+  } catch (error) {
+    throw new Error(`Failed to fetch customers: ${error.message}`);
+  }
+};
 
 // Sản phẩm
 export async function getProducts(options = {}) {
