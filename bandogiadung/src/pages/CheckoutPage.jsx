@@ -7,7 +7,7 @@ import { useAuth } from "../contexts/AuthContext.jsx";
 import { formatCurrency } from "../lib/utils.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
-import { createSepayTransaction } from "../lib/api.js";
+import { createSepayTransaction, checkTransactionStatus } from "../lib/api.js";
 import SepayQRCode from "../components/payment/SepayQRCode.jsx";
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || "https://thtstore-websitebandogiadung-backend.onrender.com/";
@@ -46,18 +46,40 @@ function CheckoutPage() {
 
     if (transaction) {
       const handleTransactionUpdate = (data) => {
-        console.log("Received transactionUpdate:", JSON.stringify(data, null, 2)); // Log chi tiết data
-        // Tạm thời bỏ điều kiện để debug
-        setTransactionStatus(data.status);
-        if (data.status === "SUCCESS") {
-          handlePaymentSuccess(transaction.transactionId);
-        } else if (data.status === "FAILED") {
-          toast.error("Thanh toán thất bại. Vui lòng thử lại.");
-          setTransaction(null);
+        console.log("Received transactionUpdate:", JSON.stringify(data, null, 2));
+        if (data.transactionId === transaction.transactionId) { // Khôi phục điều kiện
+          setTransactionStatus(data.status);
+          if (data.status === "SUCCESS") {
+            handlePaymentSuccess(transaction.transactionId);
+          } else if (data.status === "FAILED") {
+            toast.error("Thanh toán thất bại. Vui lòng thử lại.");
+            setTransaction(null);
+          }
         }
       };
       socket.on("transactionUpdate", handleTransactionUpdate);
-      return () => socket.off("transactionUpdate", handleTransactionUpdate);
+
+      // Fallback: Kiểm tra trạng thái nếu Socket thất bại
+      const checkStatusInterval = setInterval(async () => {
+        try {
+          const statusResponse = await checkTransactionStatus(transaction.transactionId);
+          if (statusResponse.status === "SUCCESS") {
+            handlePaymentSuccess(transaction.transactionId);
+            clearInterval(checkStatusInterval);
+          } else if (statusResponse.status === "FAILED") {
+            toast.error("Thanh toán thất bại. Vui lòng thử lại.");
+            setTransaction(null);
+            clearInterval(checkStatusInterval);
+          }
+        } catch (error) {
+          console.error("Fallback check failed:", error);
+        }
+      }, 5000); // Kiểm tra mỗi 5 giây
+
+      return () => {
+        socket.off("transactionUpdate", handleTransactionUpdate);
+        clearInterval(checkStatusInterval);
+      };
     }
   }, [transaction]);
 
