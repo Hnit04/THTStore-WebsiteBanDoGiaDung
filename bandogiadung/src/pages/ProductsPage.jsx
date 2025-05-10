@@ -1,15 +1,15 @@
 // client/src/pages/ProductsPage.jsx
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom"
 import { useProducts } from "../hooks/useProducts.js"
 import { useCategories } from "../hooks/useCategories.js"
-import { formatCurrency } from "../lib/utils.js"
+import { formatCurrency, debounce } from "../lib/utils.js"
 import { Link } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext.jsx"
 import AddProductModal from "../components/ui/AddProductModal.jsx"
-import { Heart, ShoppingCart } from "lucide-react"
+import { Heart, ShoppingCart, Search } from "lucide-react"
 import { useFavorites } from "../contexts/FavoritesContext.jsx"
 import { useCart } from "../contexts/CartContext.jsx"
 import toast from "react-hot-toast"
@@ -23,54 +23,50 @@ function ProductsPage() {
   const { toggleFavorite, isFavorite } = useFavorites()
   const { addToCart, cart, refreshCart } = useCart()
 
-  const categoryParam = searchParams.get("category")
-  const searchParam = searchParams.get("search")
-  const minPriceParam = searchParams.get("minPrice")
-  const maxPriceParam = searchParams.get("maxPrice")
-
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const categoryParam = searchParams.get("category") || ""
+  const searchParam = searchParams.get("search") || ""
+  const minPriceParam = searchParams.get("minPrice") || "0"
+  const maxPriceParam = searchParams.get("maxPrice") || "5000000"
 
   const [filters, setFilters] = useState({
-    category: categoryParam || "",
-    minPrice: minPriceParam ? Number.parseInt(minPriceParam) : 0,
-    maxPrice: maxPriceParam ? Number.parseInt(maxPriceParam) : 5000000,
-    search: searchParam || "",
+    category: categoryParam,
+    minPrice: parseInt(minPriceParam) || 0,
+    maxPrice: parseInt(maxPriceParam) || 5000000,
+    search: searchParam,
   })
 
   const [priceRange, setPriceRange] = useState([
-    minPriceParam ? Number.parseInt(minPriceParam) : 0,
-    maxPriceParam ? Number.parseInt(maxPriceParam) : 5000000,
+    parseInt(minPriceParam) || 0,
+    parseInt(maxPriceParam) || 5000000,
   ])
-
+  const [isApplyingFilters, setIsApplyingFilters] = useState(false)
   const { products, loading: productsLoading, refetch } = useProducts(filters)
   const { categories, loading: categoriesLoading } = useCategories()
   const [viewMode, setViewMode] = useState("grid")
 
-  const updateFiltersAndURL = useCallback(
-      (newFilters) => {
-        setFilters(newFilters)
-        const params = new URLSearchParams()
-        if (newFilters.category) params.set("category", newFilters.category)
-        if (newFilters.search) params.set("search", newFilters.search)
-        if (newFilters.minPrice > 0) params.set("minPrice", newFilters.minPrice.toString())
-        if (newFilters.maxPrice < 5000000) params.set("maxPrice", newFilters.maxPrice.toString())
+  const debouncedUpdateFilters = useMemo(
+      () =>
+          debounce((newFilters) => {
+            setFilters(newFilters)
+            const params = new URLSearchParams()
+            if (newFilters.category) params.set("category", newFilters.category)
+            if (newFilters.search) params.set("search", newFilters.search)
+            if (newFilters.minPrice > 0) params.set("minPrice", newFilters.minPrice.toString())
+            if (newFilters.maxPrice < 5000000) params.set("maxPrice", newFilters.maxPrice.toString())
 
-        navigate(`?${params.toString()}`, { replace: true })
-        setRefreshTrigger((prev) => prev + 1)
-
-        if (typeof refetch === "function") {
-          refetch(newFilters)
-        }
-      },
-      [navigate, refetch],
+            navigate(`?${params.toString()}`, { replace: true })
+            setIsApplyingFilters(true)
+            refetch(newFilters).finally(() => setIsApplyingFilters(false))
+          }, 500),
+      [navigate, refetch]
   )
 
   useEffect(() => {
     const newFilters = {
-      category: categoryParam || "",
-      minPrice: minPriceParam ? Number.parseInt(minPriceParam) : 0,
-      maxPrice: maxPriceParam ? Number.parseInt(maxPriceParam) : 5000000,
-      search: searchParam || "",
+      category: categoryParam,
+      minPrice: parseInt(minPriceParam) || 0,
+      maxPrice: parseInt(maxPriceParam) || 5000000,
+      search: searchParam,
     }
 
     if (
@@ -81,45 +77,46 @@ function ProductsPage() {
     ) {
       setFilters(newFilters)
       setPriceRange([newFilters.minPrice, newFilters.maxPrice])
-
-      if (typeof refetch === "function") {
-        refetch(newFilters)
-      }
+      debouncedUpdateFilters(newFilters)
     }
-  }, [categoryParam, searchParam, minPriceParam, maxPriceParam, filters, refetch])
+  }, [categoryParam, searchParam, minPriceParam, maxPriceParam, debouncedUpdateFilters])
 
-  useEffect(() => {
-    if (refreshTrigger > 0 && typeof refetch === "function") {
-      refetch(filters)
+  const handleCategoryChange = useCallback(
+      (categoryId) => {
+        const newFilters = {
+          ...filters,
+          category: filters.category === categoryId ? "" : categoryId,
+        }
+        debouncedUpdateFilters(newFilters)
+      },
+      [filters, debouncedUpdateFilters]
+  )
+
+  const handlePriceChange = useCallback(() => {
+    if (priceRange[0] > priceRange[1]) {
+      toast.error("Giá tối thiểu không thể lớn hơn giá tối đa")
+      return
     }
-  }, [refreshTrigger, filters, refetch])
-
-  const handleCategoryChange = (categoryId) => {
-    const newFilters = {
-      ...filters,
-      category: filters.category === categoryId ? "" : categoryId,
-    }
-    updateFiltersAndURL(newFilters)
-  }
-
-  const handlePriceChange = () => {
     const newFilters = {
       ...filters,
       minPrice: priceRange[0],
       maxPrice: priceRange[1],
     }
-    updateFiltersAndURL(newFilters)
-  }
+    debouncedUpdateFilters(newFilters)
+  }, [filters, priceRange, debouncedUpdateFilters])
 
-  const handleSearchChange = (e) => {
-    const newFilters = {
-      ...filters,
-      search: e.target.value,
-    }
-    updateFiltersAndURL(newFilters)
-  }
+  const handleSearchChange = useCallback(
+      (e) => {
+        const newFilters = {
+          ...filters,
+          search: e.target.value.trim(),
+        }
+        debouncedUpdateFilters(newFilters)
+      },
+      [filters, debouncedUpdateFilters]
+  )
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     const newFilters = {
       category: "",
       minPrice: 0,
@@ -129,7 +126,9 @@ function ProductsPage() {
     setPriceRange([0, 5000000])
     setFilters(newFilters)
     navigate("", { replace: true })
-  }
+    setIsApplyingFilters(true)
+    refetch(newFilters).finally(() => setIsApplyingFilters(false))
+  }, [navigate, refetch])
 
   const handleBuyNow = async (product) => {
     if (!isAuthenticated) {
@@ -138,7 +137,6 @@ function ProductsPage() {
       return
     }
     try {
-      // Kiểm tra tồn kho
       if (typeof product.stock === 'undefined' || product.stock < 1) {
         toast.error(`Sản phẩm ${product.name} đã hết hàng.`)
         return
@@ -217,13 +215,17 @@ function ProductsPage() {
           <aside className="w-full lg:w-1/4 space-y-6">
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="font-semibold text-xl mb-4 text-gray-700">Tìm kiếm</h2>
-              <input
-                  type="text"
-                  placeholder="Tìm kiếm sản phẩm..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
-                  value={filters.search}
-                  onChange={handleSearchChange}
-              />
+              <div className="relative">
+                <input
+                    type="text"
+                    placeholder="Tìm kiếm sản phẩm..."
+                    className="w-full px-4 py-3 pl-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                    value={filters.search}
+                    onChange={handleSearchChange}
+                    disabled={isApplyingFilters}
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-lg p-6">
@@ -244,6 +246,7 @@ function ProductsPage() {
                               checked={filters.category === category._id}
                               onChange={() => handleCategoryChange(category._id)}
                               className="mr-2 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                              disabled={isApplyingFilters}
                           />
                           <label htmlFor={`category-${category._id}`} className="text-gray-600">
                             {category.name}
@@ -263,8 +266,9 @@ function ProductsPage() {
                     max="5000000"
                     step="100000"
                     value={priceRange[0]}
-                    onChange={(e) => setPriceRange([Number.parseInt(e.target.value), priceRange[1]])}
+                    onChange={(e) => setPriceRange([parseInt(e.target.value), priceRange[1]])}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    disabled={isApplyingFilters}
                 />
                 <input
                     type="range"
@@ -272,8 +276,9 @@ function ProductsPage() {
                     max="5000000"
                     step="100000"
                     value={priceRange[1]}
-                    onChange={(e) => setPriceRange([priceRange[0], Number.parseInt(e.target.value)])}
+                    onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    disabled={isApplyingFilters}
                 />
               </div>
               <div className="flex justify-between text-sm text-gray-600 mb-4">
@@ -282,15 +287,21 @@ function ProductsPage() {
               </div>
               <button
                   onClick={handlePriceChange}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-medium transition-all"
+                  className={`w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-medium transition-all ${
+                      isApplyingFilters ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isApplyingFilters}
               >
-                Áp dụng
+                {isApplyingFilters ? "Đang áp dụng..." : "Áp dụng"}
               </button>
             </div>
 
             <button
                 onClick={handleResetFilters}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-lg font-medium transition-all"
+                className={`w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-lg font-medium transition-all ${
+                    isApplyingFilters ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                disabled={isApplyingFilters}
             >
               Đặt lại bộ lọc
             </button>
@@ -331,7 +342,6 @@ function ProductsPage() {
                   >
                     Thêm sản phẩm
                   </button>
-
                   {isModalOpen && (
                       <AddProductModal
                           isOpen={isModalOpen}
@@ -344,11 +354,10 @@ function ProductsPage() {
                 </div>
             )}
 
-            {productsLoading ? (
-                <div className={`grid ${viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : ""} gap-6`}>
-                  {[...Array(6)].map((_, index) => (
-                      <div key={index} className="bg-gray-100 animate-pulse rounded-xl h-80"></div>
-                  ))}
+            {isApplyingFilters || productsLoading ? (
+                <div className="text-center py-16">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Đang tải sản phẩm...</p>
                 </div>
             ) : products.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-xl shadow-lg">
@@ -368,7 +377,6 @@ function ProductsPage() {
                       console.error("Invalid product ID:", product)
                       return null
                     }
-                    console.log("Product ID:", product._id, "URL:", `/products/${product._id}`)
                     return (
                         <div
                             key={product._id}
@@ -406,13 +414,13 @@ function ProductsPage() {
                               <div>
                                 {formatCurrency(product.price) && (
                                     <span className="font-bold text-red-600 text-lg">
-                                      {formatCurrency(product.price)}
-                                    </span>
+                              {formatCurrency(product.price)}
+                            </span>
                                 )}
                                 {formatCurrency(product.old_price) && (
                                     <span className="text-gray-400 text-sm line-through ml-2">
-                                      {formatCurrency(product.old_price)}
-                                    </span>
+                              {formatCurrency(product.old_price)}
+                            </span>
                                 )}
                               </div>
                             </div>
@@ -449,7 +457,6 @@ function ProductsPage() {
                       console.error("Invalid product ID:", product)
                       return null
                     }
-                    console.log("Product ID:", product._id, "URL:", `/products/${product._id}`)
                     return (
                         <div
                             key={product._id}
@@ -488,13 +495,13 @@ function ProductsPage() {
                                   <div>
                                     {formatCurrency(product.price) && (
                                         <span className="font-bold text-red-600 text-lg">
-                                          {formatCurrency(product.price)}
-                                        </span>
+                                  {formatCurrency(product.price)}
+                                </span>
                                     )}
                                     {formatCurrency(product.old_price) && (
                                         <span className="text-gray-400 text-sm line-through ml-2">
-                                          {formatCurrency(product.old_price)}
-                                        </span>
+                                  {formatCurrency(product.old_price)}
+                                </span>
                                     )}
                                   </div>
                                 </div>
