@@ -16,6 +16,7 @@ const socket = io(SOCKET_URL, {
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,
+  transports: ["websocket"],
 });
 
 function CheckoutPage() {
@@ -55,10 +56,17 @@ function CheckoutPage() {
     socket.on("reconnect_error", (error) => {
       console.error("Socket reconnection error:", error);
     });
+    socket.on("connect_error", (error) => {
+      console.error("Socket.IO connect error:", error);
+    });
 
     if (transaction) {
       const handleTransactionUpdate = (data) => {
         console.log("Received transactionUpdate:", JSON.stringify(data, null, 2));
+        if (!data.transactionId) {
+          console.error("Transaction ID missing in transactionUpdate:", data);
+          return;
+        }
         if (data.transactionId === transaction.transactionId) {
           setTransactionStatus(data.status);
           if (data.status === "SUCCESS") {
@@ -100,7 +108,6 @@ function CheckoutPage() {
   const handlePaymentSuccess = async (transactionId) => {
     toast.success("Thanh toán thành công!");
     try {
-      // Tạo order mới
       const orderPayload = {
         transactionId: transactionId,
         user_id: user?._id || "unknown",
@@ -139,10 +146,8 @@ function CheckoutPage() {
         throw new Error(orderData.message || "Không thể tạo đơn hàng");
       }
 
-      // Xóa giỏ hàng
       await Promise.all(selectedItems.map((item) => removeFromCart(item._id)));
 
-      // Chuyển hướng đến trang xác nhận đơn hàng
       navigate("/order-confirmation", {
         state: { transactionId, items: selectedItems, total, orderId: orderData.data.id },
       });
@@ -164,7 +169,7 @@ function CheckoutPage() {
         toast.error("Thanh toán thất bại. Vui lòng thử lại.");
         setTransaction(null);
       } else {
-        toast.info("Giao dịch vẫn đang chờ xử lý. Vui lòng thử lại sau.");
+        toast("Giao dịch vẫn đang chờ xử lý. Vui lòng thử lại sau.", { icon: "ℹ️" });
       }
     } catch (error) {
       console.error("Manual check failed:", error);
