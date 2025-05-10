@@ -59,35 +59,16 @@ export async function getOrders({ startDate, endDate }) {
 }
 
 export const getAdminOrders = async (startDate, endDate) => {
-  const response = await fetch(`/api/orders/orderCustomer?startDate=${startDate}&endDate=${endDate}`, {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
-  });
-  if (!response.ok) {
-    throw new Error("Failed to fetch orders");
-  }
-  return response.json();
+  const queryParams = new URLSearchParams({ startDate, endDate });
+  return await fetchAPI(`/orders/orderCustomer?${queryParams.toString()}`);
 };
 
 export const getTotalProducts = async () => {
-  const response = await fetch("/api/products?limit=1", {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
-  });
-  if (!response.ok) {
-    throw new Error("Failed to fetch products");
-  }
-  return response.json();
+  return await fetchAPI("/products?limit=1");
 };
+
 export const getTotalCustomers = async () => {
-  try {
-    const data = await apiRequest("/api/customers", "GET");
-    return data;
-  } catch (error) {
-    throw new Error(`Failed to fetch customers: ${error.message}`);
-  }
+  return await fetchAPI("/customers");
 };
 
 // Sản phẩm

@@ -234,7 +234,7 @@ const AdminOverview = () => {
         <div className="bg-white p-6 rounded-lg shadow flex items-center">
           <DollarSign size={32} className="text-red-600 mr-4" />
           <div>
-            <h3 className="text-lg font-semibold text-gray-700">Doanh thu năm</h3>
+            <h3 className="text-lg font-semibold text-gray-700">Doanh thu </h3>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(overviewData.yearlyRevenue)}</p>
           </div>
         </div>
