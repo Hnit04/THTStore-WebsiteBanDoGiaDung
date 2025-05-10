@@ -174,7 +174,7 @@ function CartPage() {
   }, [cart, selectedItems]);
 
   const subtotal = getCartTotal();
-  const shipping = subtotal > 500000 ? 0 : 30000;
+  const shipping = subtotal > 500000 ? 0 : 1000; // Sửa phí vận chuyển thành 1k
 
   if (!isAuthenticated) {
     return (
@@ -278,7 +278,7 @@ function CartPage() {
 
   const selectedCartItems = cart.filter((item) => selectedItems.has(item._id));
   const selectedSubtotal = selectedCartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const selectedShipping = selectedSubtotal > 500000 ? 0 : 30000;
+  const selectedShipping = selectedSubtotal > 500000 ? 0 : 1000; // Sửa phí vận chuyển thành 1k
   const selectedTotal = selectedSubtotal + selectedShipping;
 
   const getCheckoutLink = () => {

@@ -47,7 +47,7 @@ function CheckoutPage() {
     if (transaction) {
       const handleTransactionUpdate = (data) => {
         console.log("Received transactionUpdate:", JSON.stringify(data, null, 2));
-        if (data.transactionId === transaction.transactionId) { // Khôi phục điều kiện
+        if (data.transactionId === transaction.transactionId) {
           setTransactionStatus(data.status);
           if (data.status === "SUCCESS") {
             handlePaymentSuccess(transaction.transactionId);
@@ -55,6 +55,8 @@ function CheckoutPage() {
             toast.error("Thanh toán thất bại. Vui lòng thử lại.");
             setTransaction(null);
           }
+        } else {
+          console.log(`Transaction ID mismatch: Expected ${transaction.transactionId}, received ${data.transactionId}`);
         }
       };
       socket.on("transactionUpdate", handleTransactionUpdate);
@@ -63,6 +65,7 @@ function CheckoutPage() {
       const checkStatusInterval = setInterval(async () => {
         try {
           const statusResponse = await checkTransactionStatus(transaction.transactionId);
+          console.log("Fallback check status response:", JSON.stringify(statusResponse, null, 2));
           if (statusResponse.status === "SUCCESS") {
             handlePaymentSuccess(transaction.transactionId);
             clearInterval(checkStatusInterval);
