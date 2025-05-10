@@ -5,9 +5,10 @@ import { useAuth } from '../../contexts/AuthContext.jsx';
 import { getCurrentUser } from '../../lib/api.js';
 
 const adminMenuItems = [
-  { to: '/admin/products', label: 'Quản lý sản phẩm', icon: Package },
-  { to: '/admin/customers', label: 'Quản lý khách hàng', icon: Users },
-  { to: '/admin/orders', label: 'Quản lý hóa đơn', icon: FileText },
+  { to: '/admin'},
+  { to: '/admin/products', label: 'Sản phẩm', icon: Package },
+  { to: '/admin/customers', label: 'Khách hàng', icon: Users },
+  { to: '/admin/orders', label: 'Hóa đơn', icon: FileText },
   { to: '/admin/statistics', label: 'Thống kê', icon: BarChart },
 ];
 
