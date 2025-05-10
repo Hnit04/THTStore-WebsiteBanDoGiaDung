@@ -22,10 +22,20 @@ async function fetchAPI(endpoint, options = {}) {
     const response = await fetch(url, options);
     console.log(`API Response status: ${response.status}`);
 
+    const contentType = response.headers.get("content-type");
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        throw new Error(`Phản hồi không phải JSON, có thể bị chuyển hướng: ${text.slice(0, 50)}... (HTTP ${response.status})`);
+      }
+      const errorData = await response.json();
       console.error(`API Error Response:`, errorData);
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      throw new Error(`Kỳ vọng phản hồi JSON, nhận được: ${text.slice(0, 50)}...`);
     }
 
     const data = await response.json();

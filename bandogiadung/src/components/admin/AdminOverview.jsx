@@ -116,27 +116,28 @@ const AdminOverview = () => {
     const fetchOverviewData = async () => {
       try {
         setLoading(true);
-
+  
         const now = new Date();
         const startOfYear = new Date(now.getFullYear(), 0, 1);
         const endOfYear = new Date(now.getFullYear(), 11, 31);
         const startDate = startOfYear.toISOString().split("T")[0];
         const endDate = endOfYear.toISOString().split("T")[0];
-
+  
         const token = localStorage.getItem("token");
         if (!token) {
           throw new Error("Không tìm thấy token xác thực. Vui lòng đăng nhập lại.");
         }
-
+        console.log('Token used for API calls:', token); // Log the token
+  
         const ordersResponse = await getAdminOrders(startDate, endDate);
-        console.log('Orders API Response:', ordersResponse);
-
+        console.log('Phản hồi API Đơn Hàng:', ordersResponse);
+  
         if (!ordersResponse.success) {
-          throw new Error(ordersResponse.error || "Lỗi từ API đơn hàng");
+          const errorMessage = ordersResponse.error || "Lỗi từ API đơn hàng (không có chi tiết lỗi từ server)";
+          throw new Error(errorMessage);
         }
         const orders = ordersResponse.data;
-
-        // Tính doanh thu theo tháng trong năm
+  
         const revenueByMonth = {};
         orders.forEach((order) => {
           const createdAt = new Date(order.created_at);
@@ -145,20 +146,19 @@ const AdminOverview = () => {
             revenueByMonth[monthKey] = (revenueByMonth[monthKey] || 0) + (order.total_amount || 0);
           }
         });
-
+  
         const months = Array.from({ length: 12 }, (_, i) => {
           const date = new Date(now.getFullYear(), i, 1);
-          return date.toLocaleString('vi-VN', { month: 'short', year: 'numeric' });
+          return formatDate(date, "MMM YYYY");
         });
         const revenueData = months.map((month) => revenueByMonth[month] || 0);
         const yearlyRevenue = revenueData.reduce((sum, rev) => sum + rev, 0);
-
+  
         if (chartRefRevenue.current) {
           chartRefRevenue.current.updateSeries([{ name: "Doanh thu (VNĐ)", data: revenueData }]);
           chartRefRevenue.current.updateOptions({ xaxis: { categories: months } });
         }
-
-        // Tính sản phẩm bán chạy
+  
         const productSales = {};
         orders.forEach((order) => {
           order.items.forEach((item) => {
@@ -181,23 +181,21 @@ const AdminOverview = () => {
           .map(([key, value]) => value)
           .sort((a, b) => b.quantitySold - a.quantitySold)
           .slice(0, 3);
-
-        // Fetch tổng khách hàng
+  
         const customersResponse = await getTotalCustomers();
-        console.log('Customers API Response:', customersResponse);
+        console.log('Phản hồi API Khách Hàng:', customersResponse);
         if (!customersResponse.success) {
           throw new Error(customersResponse.error || "Lỗi từ API khách hàng");
         }
         const totalCustomers = customersResponse.data.total || 0;
-
-        // Fetch tổng sản phẩm
+  
         const productsResponse = await getTotalProducts();
-        console.log('Products API Response:', productsResponse);
+        console.log('Phản hồi API Sản Phẩm:', productsResponse);
         if (!productsResponse.success) {
           throw new Error(productsResponse.error || "Lỗi từ API sản phẩm");
         }
         const totalProducts = productsResponse.pagination.total;
-
+  
         setOverviewData({
           yearlyRevenue,
           totalCustomers,
@@ -205,16 +203,19 @@ const AdminOverview = () => {
           topProducts,
         });
       } catch (error) {
-        console.error("Error fetching overview data:", {
+        console.error("Lỗi khi lấy dữ liệu tổng quan:", {
           message: error.message,
           stack: error.stack,
         });
         toast.error(error.message || "Không thể tải dữ liệu tổng quan");
+        if (error.message.includes('chuyển hướng') || error.message.includes('đăng nhập')) {
+          window.location.href = '/login';
+        }
       } finally {
         setLoading(false);
       }
     };
-
+  
     fetchOverviewData();
   }, []);
 
