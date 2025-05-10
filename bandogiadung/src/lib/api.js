@@ -160,11 +160,11 @@ export async function cancelOrder(orderId) {
   return response;
 }
 
-// Thanh toán SEPay - Phiên bản cải tiến
+// Thanh toán SEPay
 export async function createSepayTransaction(transactionData) {
   try {
     console.log("Tạo giao dịch SEPay:", transactionData);
-    const response = await fetchAPI("/sepay/transactions", {
+    const response = await fetchAPI("/sepay/create-transaction", { // Sửa endpoint
       method: "POST",
       body: JSON.stringify(transactionData),
     });
