@@ -12,10 +12,8 @@ const AdminOverview = () => {
     totalProducts: 0,
     topProducts: [],
   });
-  const [orders, setOrders] = useState([]);
   const chartRefRevenue = useRef(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   const chartOptions = {
     chart: {
@@ -118,55 +116,72 @@ const AdminOverview = () => {
     const fetchOverviewData = async () => {
       try {
         setLoading(true);
-        setError(null);
-  
+
         const now = new Date();
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
-        const endOfYear = new Date(now.getFullYear(), 11, 31);
-        
-        // Fetch orders using the getAllOrders method like StatisticsPage does
+        const startOfYear = new Date(now.getFullYear() - 1, 0, 1); // Use 2024
+        const endOfYear = new Date(now.getFullYear() - 1, 11, 31); // Use 2024
+        const startDate = startOfYear.toISOString().split("T")[0];
+        const endDate = endOfYear.toISOString().split("T")[0];
+
+        const token = localStorage.getItem("token");
+        if (!token) {
+          throw new Error("Không tìm thấy token xác thực. Vui lòng đăng nhập lại.");
+        }
+        console.log('Token used for API calls:', token);
+
         const ordersResponse = await getAllOrders();
-        console.log('fetchOverviewData - Raw Response:', ordersResponse);
+        console.log('Phản hồi API Đơn Hàng:', ordersResponse);
 
         if (!ordersResponse || typeof ordersResponse !== 'object') {
           throw new Error('Response API không hợp lệ');
         }
 
         const orders = Array.isArray(ordersResponse) ? ordersResponse : (ordersResponse.data || []);
-        console.log('fetchOverviewData - Extracted orders:', orders);
+        console.log('Extracted orders:', orders);
 
         if (!Array.isArray(orders) || orders.length === 0) {
           throw new Error('Không có dữ liệu đơn hàng từ API');
         }
-        
-        setOrders(orders);
-        
-        // Process orders for revenue data
+
+        // Filter orders by date range and payment status
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        start.setUTCHours(0, 0, 0, 0);
+        end.setUTCHours(23, 59, 59, 999);
+
+        const filteredOrders = orders.filter(order => {
+          const createdAt = new Date(order.created_at);
+          return createdAt >= start && createdAt <= end && order.payment_status === "completed";
+        });
+
+        if (filteredOrders.length === 0) {
+          throw new Error(`Không có đơn hàng hoàn thành trong khoảng thời gian từ ${start.toLocaleDateString('vi-VN')} đến ${end.toLocaleDateString('vi-VN')}.`);
+        }
+
         const revenueByMonth = {};
-        orders.forEach((order) => {
+        filteredOrders.forEach((order) => {
           const createdAt = new Date(order.created_at);
           if (!isNaN(createdAt)) {
             const monthKey = createdAt.toLocaleString('vi-VN', { month: 'short', year: 'numeric' });
             revenueByMonth[monthKey] = (revenueByMonth[monthKey] || 0) + (order.total_amount || 0);
           }
         });
-  
+
         const months = Array.from({ length: 12 }, (_, i) => {
-          const date = new Date(now.getFullYear(), i, 1);
+          const date = new Date(now.getFullYear() - 1, i, 1);
           return formatDate(date, "MMM YYYY");
         });
         const revenueData = months.map((month) => revenueByMonth[month] || 0);
         const yearlyRevenue = revenueData.reduce((sum, rev) => sum + rev, 0);
-  
+
         if (chartRefRevenue.current) {
           chartRefRevenue.current.updateSeries([{ name: "Doanh thu (VNĐ)", data: revenueData }]);
           chartRefRevenue.current.updateOptions({ xaxis: { categories: months } });
         }
-  
-        // Get top products
+
         const productSales = {};
-        orders.forEach((order) => {
-          if (order.items && Array.isArray(order.items)) {
+        filteredOrders.forEach((order) => {
+          if (order.items) {
             order.items.forEach((item) => {
               const key = item.product_id;
               if (key) {
@@ -184,27 +199,25 @@ const AdminOverview = () => {
             });
           }
         });
-        
         const topProducts = Object.entries(productSales)
           .map(([key, value]) => value)
           .sort((a, b) => b.quantitySold - a.quantitySold)
           .slice(0, 3);
-  
-        // Fetch additional data
+
         const customersResponse = await getTotalCustomers();
         console.log('Phản hồi API Khách Hàng:', customersResponse);
         if (!customersResponse.success) {
           throw new Error(customersResponse.error || "Lỗi từ API khách hàng");
         }
         const totalCustomers = customersResponse.data.total || 0;
-  
+
         const productsResponse = await getTotalProducts();
         console.log('Phản hồi API Sản Phẩm:', productsResponse);
         if (!productsResponse.success) {
           throw new Error(productsResponse.error || "Lỗi từ API sản phẩm");
         }
         const totalProducts = productsResponse.pagination.total;
-  
+
         setOverviewData({
           yearlyRevenue,
           totalCustomers,
@@ -216,7 +229,6 @@ const AdminOverview = () => {
           message: error.message,
           stack: error.stack,
         });
-        setError(error.message || "Không thể tải dữ liệu tổng quan");
         toast.error(error.message || "Không thể tải dữ liệu tổng quan");
         if (error.message.includes('chuyển hướng') || error.message.includes('đăng nhập')) {
           window.location.href = '/login';
@@ -225,7 +237,7 @@ const AdminOverview = () => {
         setLoading(false);
       }
     };
-  
+
     fetchOverviewData();
   }, []);
 
@@ -233,24 +245,6 @@ const AdminOverview = () => {
     return (
       <div className="p-6 flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
-          {error}
-          {error.includes('đăng nhập') && (
-            <button
-              onClick={() => window.location.href = '/login'}
-              className="ml-2 bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700"
-            >
-              Đăng nhập lại
-            </button>
-          )}
-        </div>
       </div>
     );
   }
