@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_URL = "https://thtstore-websitebandogiadung-backend.onrender.com/api";
+// Sửa API_URL để loại bỏ "/api", vì endpoint sẽ bao gồm "/api"
+const API_URL = "https://thtstore-websitebandogiadung-backend.onrender.com";
 
 async function fetchAPI(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
@@ -192,7 +193,7 @@ export async function checkTransactionStatus(transactionId) {
     }
 
     console.log("Kiểm tra trạng thái giao dịch:", transactionId);
-    const response = await fetchAPI(`/api/sepay/transaction/${transactionId}`); // Đã sửa
+    const response = await fetchAPI(`/sepay/transactions/${transactionId}`); // Sửa endpoint
     console.log("Kết quả kiểm tra trạng thái:", response);
     return response;
   } catch (error) {
