@@ -13,9 +13,9 @@ import SepayQRCode from "../components/payment/SepayQRCode.jsx";
 const SOCKET_URL = import.meta.env.VITE_API_URL || "https://thtstore-websitebandogiadung-backend.onrender.com/";
 const socket = io(SOCKET_URL, {
   autoConnect: true,
-  reconnection: true, // Tự động kết nối lại
-  reconnectionAttempts: Infinity, // Thử kết nối lại không giới hạn
-  reconnectionDelay: 1000, // Delay 1 giây giữa các lần thử
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
 });
 
 function CheckoutPage() {
@@ -73,7 +73,6 @@ function CheckoutPage() {
       };
       socket.on("transactionUpdate", handleTransactionUpdate);
 
-      // Fallback: Kiểm tra trạng thái nếu Socket thất bại
       const checkStatusInterval = setInterval(async () => {
         try {
           const statusResponse = await checkTransactionStatus(transaction.transactionId);
@@ -89,7 +88,7 @@ function CheckoutPage() {
         } catch (error) {
           console.error("Fallback check failed:", error);
         }
-      }, 10000); // Kiểm tra mỗi 10 giây
+      }, 10000);
 
       return () => {
         socket.off("transactionUpdate", handleTransactionUpdate);
@@ -101,9 +100,51 @@ function CheckoutPage() {
   const handlePaymentSuccess = async (transactionId) => {
     toast.success("Thanh toán thành công!");
     try {
+      // Tạo order mới
+      const orderPayload = {
+        transactionId: transactionId,
+        user_id: user?._id || "unknown",
+        email: user?.email || "unknown@example.com",
+        user_fullName: user?.fullName || "Unknown User",
+        user_phone: user?.phone || "Chưa có số điện thoại",
+        name: user?.fullName || "Unknown Receiver",
+        phone: user?.phone || "Chưa có số điện thoại",
+        status: "processing",
+        total_amount: total,
+        shipping_address: user?.address || "Chưa có địa chỉ",
+        shipping_city: user?.city || "Chưa có thành phố",
+        shipping_postal_code: user?.postalCode || "700000",
+        shipping_country: user?.country || "Vietnam",
+        payment_method: "banking",
+        payment_status: "completed",
+        items: selectedItems.map((item) => ({
+          product_id: item.product._id,
+          product_name: item.product.name,
+          quantity: item.quantity,
+          product_price: item.product.price,
+        })),
+      };
+
+      const response = await fetch("https://thtstore-websitebandogiadung-backend.onrender.com/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      const orderData = await response.json();
+      if (!orderData.success) {
+        throw new Error(orderData.message || "Không thể tạo đơn hàng");
+      }
+
+      // Xóa giỏ hàng
       await Promise.all(selectedItems.map((item) => removeFromCart(item._id)));
+
+      // Chuyển hướng đến trang xác nhận đơn hàng
       navigate("/order-confirmation", {
-        state: { transactionId, items: selectedItems, total },
+        state: { transactionId, items: selectedItems, total, orderId: orderData.data.id },
       });
     } catch (error) {
       console.error("Lỗi xử lý sau thanh toán:", error);
