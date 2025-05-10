@@ -10,7 +10,8 @@ import { io } from "socket.io-client";
 import { createSepayTransaction } from "../lib/api.js";
 import SepayQRCode from "../components/payment/SepayQRCode.jsx";
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || "https://thtstore-websitebandogiadung-backend.onrender.com/";
+// Sửa URL Socket.IO để loại bỏ "/" ở cuối
+const SOCKET_URL = import.meta.env.VITE_API_URL || "https://thtstore-websitebandogiadung-backend.onrender.com";
 const socket = io(SOCKET_URL, { autoConnect: true });
 
 function CheckoutPage() {

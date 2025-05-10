@@ -20,7 +20,11 @@ const SepayQRCode = ({ transactionId, qrCodeUrl, amount, onSuccess, onError }) =
 
         console.log("SepayQRCode: Khởi tạo với transactionId =", transactionId);
 
-        const socket = io("https://thtstore-websitebandogiadung-backend.onrender.com/api", { withCredentials: true });
+        // Sửa URL Socket.IO để loại bỏ "/api"
+        const socket = io("https://thtstore-websitebandogiadung-backend.onrender.com", {
+            withCredentials: true,
+            transports: ["websocket", "polling"],
+        });
         let statusInterval;
 
         socket.on("connect", () => {
@@ -42,28 +46,32 @@ const SepayQRCode = ({ transactionId, qrCodeUrl, amount, onSuccess, onError }) =
             }
         });
 
-        socket.on("connect_error", () => {
-            console.warn("Socket connection failed, falling back to polling");
+        socket.on("connect_error", (err) => {
+            console.warn("Socket connection failed, falling back to polling:", err.message);
             statusInterval = setInterval(async () => {
                 try {
                     console.log("Kiểm tra trạng thái giao dịch:", transactionId);
                     const response = await checkTransactionStatus(transactionId);
                     console.log("Transaction status check:", response);
-                    if (response.transaction.status !== status) {
-                        setStatus(response.transaction.status);
-                        if (response.transaction.status === "SUCCESS") {
-                            onSuccess && onSuccess(response.transaction);
-                            clearInterval(statusInterval);
-                        } else if (response.transaction.status === "FAILED" || response.transaction.status === "EXPIRED") {
-                            setError("Giao dịch thất bại hoặc đã hết hạn");
-                            onError && onError(response.transaction);
-                            clearInterval(statusInterval);
+                    if (response.success && response.transaction) {
+                        const newStatus = response.transaction.status;
+                        if (newStatus !== status) {
+                            setStatus(newStatus);
+                            if (newStatus === "SUCCESS") {
+                                onSuccess && onSuccess(response.transaction);
+                                clearInterval(statusInterval);
+                            } else if (newStatus === "FAILED" || newStatus === "EXPIRED") {
+                                setError("Giao dịch thất bại hoặc đã hết hạn");
+                                onError && onError(response.transaction);
+                                clearInterval(statusInterval);
+                            }
                         }
                     }
                 } catch (error) {
                     console.error("Error checking transaction status:", error);
+                    setError(`Lỗi kiểm tra trạng thái: ${error.message}`);
                 }
-            }, 5000);
+            }, 5000); // Polling mỗi 5 giây
         });
 
         const timerInterval = setInterval(() => {
