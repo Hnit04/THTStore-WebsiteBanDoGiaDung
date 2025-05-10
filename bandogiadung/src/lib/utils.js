@@ -15,16 +15,29 @@ export function formatCurrency(amount) {
 }
 
 
-export function formatDate(dateString) {
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat("vi-VN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date)
-}
+// Format date based on the specified format
+export const formatDate = (dateInput, format = "YYYY-MM-DD") => {
+  if (!dateInput) return "";
+
+  const date = new Date(dateInput);
+  if (isNaN(date)) {
+    console.warn(`Invalid date input: ${dateInput}`);
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  switch (format) {
+    case "YYYY-MM-DD":
+      return `${year}-${month}-${day}`;
+    case "DD/MM":
+      return `${day}/${month}`;
+    default:
+      return date.toLocaleDateString("vi-VN");
+  }
+};
 
 export function generateOrderId() {
   return `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`
