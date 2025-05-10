@@ -25,37 +25,7 @@ const StatisticsPage = () => {
   });
   const [topProducts, setTopProducts] = useState([]);
 
-  useEffect(() => {
-    const fetchEmployeeData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          throw new Error('No token found, please log in.');
-        }
-        console.log('Token used:', token);
-        const response = await fetch('/api/users/profile', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-        }
-        const data = await response.json();
-        console.log('API response from /api/users/profile:', data);
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch user data');
-        }
-        setEmployeeName(data.data.fullName || 'Unknown User');
-      } catch (error) {
-        console.error('Error fetching employee data:', error.message);
-        setEmployeeName('Unknown User');
-      }
-    };
-    fetchEmployeeData();
-  }, []);
+ 
 
   useEffect(() => {
     const fetchOrders = async () => {
