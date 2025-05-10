@@ -232,14 +232,14 @@ export function AuthProvider({ children }) {
       await apiLogout();
       setUser(null);
       localStorage.removeItem("token");
-      navigate("/login", { replace: true }); 
+      navigate("/", { replace: true }); 
       toast.success("Đăng xuất thành công");
     } catch (err) {
       console.error("Logout error:", err);
       // Still remove token and user even if logout API fails
       setUser(null);
       localStorage.removeItem("token");
-      navigate("/login", { replace: true });
+      navigate("/", { replace: true });
       toast.error("Đăng xuất thất bại");
       throw err;
     } finally {
