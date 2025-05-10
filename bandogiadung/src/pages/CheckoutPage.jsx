@@ -11,7 +11,7 @@ import { createSepayTransaction } from "../lib/api.js";
 import SepayQRCode from "../components/payment/SepayQRCode.jsx";
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || "https://thtstore-websitebandogiadung-backend.onrender.com/";
-const socket = io(SOCKET_URL);
+const socket = io(SOCKET_URL, { autoConnect: true });
 
 function CheckoutPage() {
   const { cart, getCartTotal, removeFromCart } = useCart();
@@ -36,8 +36,17 @@ function CheckoutPage() {
   const total = subtotal + shipping;
 
   useEffect(() => {
+    console.log("Socket connecting to:", SOCKET_URL);
+    socket.on("connect", () => {
+      console.log("Socket connected, socket ID:", socket.id);
+    });
+    socket.on("disconnect", () => {
+      console.log("Socket disconnected");
+    });
+
     if (transaction) {
       const handleTransactionUpdate = (data) => {
+        console.log("Received transactionUpdate:", data);
         if (data.transactionId === transaction.transactionId) {
           setTransactionStatus(data.status);
           if (data.status === "SUCCESS") {
