@@ -118,8 +118,8 @@ const AdminOverview = () => {
         setLoading(true);
 
         const now = new Date();
-        const startOfYear = new Date(now.getFullYear() - 1, 0, 1); // Use 2024
-        const endOfYear = new Date(now.getFullYear() - 1, 11, 31); // Use 2024
+        const startOfYear = new Date(now.getFullYear());
+        const endOfYear = new Date(now.getFullYear()); 
         const startDate = startOfYear.toISOString().split("T")[0];
         const endDate = endOfYear.toISOString().split("T")[0];
 
