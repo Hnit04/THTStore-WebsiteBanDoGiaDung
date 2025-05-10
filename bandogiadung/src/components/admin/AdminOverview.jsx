@@ -1,45 +1,115 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { DollarSign, Users, Package, TrendingUp } from "lucide-react";
-import { Line } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from "chart.js";
+import ReactApexChart from "react-apexcharts";
 import { formatCurrency, formatDate } from "../../lib/utils.js";
-import { getAdminOrders, getTotalProducts } from "../../lib/api.js";
+import { getAdminOrders, getTotalProducts, getTotalCustomers } from "../../lib/api.js";
 import toast from "react-hot-toast";
-
-// Đăng ký các thành phần cần thiết cho Chart.js, bao gồm Filler
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 const AdminOverview = () => {
   const [overviewData, setOverviewData] = useState({
-    monthlyRevenue: 0,
-    monthlyCustomers: 0,
+    yearlyRevenue: 0,
+    totalCustomers: 0,
     totalProducts: 0,
     topProducts: [],
   });
-  const [chartDataRevenue, setChartDataRevenue] = useState({
-    labels: [],
-    datasets: [{ label: "Doanh thu (VNĐ)", data: [], borderColor: "rgb(239, 68, 68)", backgroundColor: "rgba(239, 68, 68, 0.2)", tension: 0.4, fill: true }],
-  });
-  const [chartDataCustomers, setChartDataCustomers] = useState({
-    labels: [],
-    datasets: [{ label: "Khách hàng", data: [], borderColor: "rgb(59, 130, 246)", backgroundColor: "rgba(59, 130, 246, 0.2)", tension: 0.4, fill: true }],
-  });
+  const chartRefRevenue = useRef(null);
   const [loading, setLoading] = useState(true);
 
   const chartOptions = {
-    responsive: true,
-    plugins: {
-      legend: { position: "top" },
-      title: { display: true, text: (ctx) => ctx.chart.data.datasets[0].label },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          callback: (value) => (value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value),
+    chart: {
+      type: 'line',
+      height: 350,
+      animations: {
+        enabled: true,
+        easing: 'easeinout',
+        speed: 600,
+      },
+      toolbar: {
+        show: true,
+        tools: {
+          download: true,
+          selection: false,
+          zoom: true,
+          zoomin: true,
+          zoomout: true,
+          pan: false,
+          reset: true,
         },
       },
     },
+    stroke: {
+      curve: 'smooth',
+      width: 2,
+    },
+    xaxis: {
+      categories: [],
+      labels: {
+        rotate: -45,
+        style: {
+          colors: '#4B5563',
+          fontSize: '12px',
+        },
+      },
+      title: {
+        text: 'Tháng',
+        style: {
+          color: '#4B5563',
+          fontSize: '14px',
+          fontWeight: 600,
+        },
+      },
+    },
+    yaxis: {
+      labels: {
+        formatter: (value) => (value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value),
+        style: {
+          colors: '#4B5563',
+          fontSize: '12px',
+        },
+      },
+      title: {
+        text: 'Doanh thu (VNĐ)',
+        style: {
+          color: '#4B5563',
+          fontSize: '14px',
+          fontWeight: 600,
+        },
+      },
+    },
+    grid: {
+      borderColor: '#E5E7EB',
+      strokeDashArray: 4,
+    },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shade: 'light',
+        type: 'vertical',
+        shadeIntensity: 0.3,
+        gradientToColors: ['#EF4444'],
+        inverseColors: false,
+        opacityFrom: 0.7,
+        opacityTo: 0.3,
+        stops: [0, 90, 100],
+      },
+    },
+    tooltip: {
+      theme: 'light',
+      y: {
+        formatter: (value) => formatCurrency(value),
+        title: {
+          formatter: () => 'Doanh thu:',
+        },
+      },
+    },
+    colors: ['#EF4444'],
+    responsive: [{
+      breakpoint: 640,
+      options: {
+        chart: { height: 300 },
+        xaxis: { labels: { rotate: -45 } },
+      },
+    }],
   };
 
   useEffect(() => {
@@ -47,20 +117,17 @@ const AdminOverview = () => {
       try {
         setLoading(true);
 
-        // Lấy ngày đầu và cuối tháng hiện tại
         const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        const startDate = startOfMonth.toISOString().split("T")[0];
-        const endDate = endOfMonth.toISOString().split("T")[0];
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const endOfYear = new Date(now.getFullYear(), 11, 31);
+        const startDate = startOfYear.toISOString().split("T")[0];
+        const endDate = endOfYear.toISOString().split("T")[0];
 
-        // Kiểm tra token
         const token = localStorage.getItem("token");
         if (!token) {
           throw new Error("Không tìm thấy token xác thực. Vui lòng đăng nhập lại.");
         }
 
-        // Fetch đơn hàng
         const ordersResponse = await getAdminOrders(startDate, endDate);
         console.log('Orders API Response:', ordersResponse);
 
@@ -69,58 +136,27 @@ const AdminOverview = () => {
         }
         const orders = ordersResponse.data;
 
-        // Tính doanh thu tháng
-        const monthlyRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
-
-        // Tính số khách hàng (email duy nhất)
-        const uniqueCustomers = [...new Set(orders.map((order) => order.email || ''))].length;
-
-        // Tính doanh thu và khách hàng theo ngày
-        const revenueByDay = {};
-        const customersByDay = {};
+        // Tính doanh thu theo tháng trong năm
+        const revenueByMonth = {};
         orders.forEach((order) => {
-          const date = formatDate(order.created_at, "YYYY-MM-DD");
-          if (date) {
-            revenueByDay[date] = (revenueByDay[date] || 0) + (order.total_amount || 0);
-            customersByDay[date] = customersByDay[date] ? [...new Set([...customersByDay[date], order.email || ''])] : [order.email || ''];
+          const createdAt = new Date(order.created_at);
+          if (!isNaN(createdAt)) {
+            const monthKey = createdAt.toLocaleString('vi-VN', { month: 'short', year: 'numeric' });
+            revenueByMonth[monthKey] = (revenueByMonth[monthKey] || 0) + (order.total_amount || 0);
           }
         });
 
-        // Chuẩn bị dữ liệu biểu đồ
-        const daysInMonth = Array.from({ length: endOfMonth.getDate() }, (_, i) => {
-          const date = new Date(now.getFullYear(), now.getMonth(), i + 1);
-          return formatDate(date, "YYYY-MM-DD");
+        const months = Array.from({ length: 12 }, (_, i) => {
+          const date = new Date(now.getFullYear(), i, 1);
+          return date.toLocaleString('vi-VN', { month: 'short', year: 'numeric' });
         });
-        const revenueData = daysInMonth.map((date) => revenueByDay[date] || 0);
-        const customerData = daysInMonth.map((date) => (customersByDay[date] ? customersByDay[date].length : 0));
-        const labels = daysInMonth.map((date) => formatDate(date, "DD/MM"));
+        const revenueData = months.map((month) => revenueByMonth[month] || 0);
+        const yearlyRevenue = revenueData.reduce((sum, rev) => sum + rev, 0);
 
-        setChartDataRevenue({
-          labels,
-          datasets: [
-            {
-              label: "Doanh thu (VNĐ)",
-              data: revenueData,
-              borderColor: "rgb(239, 68, 68)",
-              backgroundColor: "rgba(239, 68, 68, 0.2)",
-              tension: 0.4,
-              fill: true,
-            },
-          ],
-        });
-        setChartDataCustomers({
-          labels,
-          datasets: [
-            {
-              label: "Khách hàng",
-              data: customerData,
-              borderColor: "rgb(59, 130, 246)",
-              backgroundColor: "rgba(59, 130, 246, 0.2)",
-              tension: 0.4,
-              fill: true,
-            },
-          ],
-        });
+        if (chartRefRevenue.current) {
+          chartRefRevenue.current.updateSeries([{ name: "Doanh thu (VNĐ)", data: revenueData }]);
+          chartRefRevenue.current.updateOptions({ xaxis: { categories: months } });
+        }
 
         // Tính sản phẩm bán chạy
         const productSales = {};
@@ -141,23 +177,30 @@ const AdminOverview = () => {
             }
           });
         });
-        const topProducts = Object.values(productSales)
+        const topProducts = Object.entries(productSales)
+          .map(([key, value]) => value)
           .sort((a, b) => b.quantitySold - a.quantitySold)
-          .slice(0, 5);
+          .slice(0, 3);
+
+        // Fetch tổng khách hàng
+        const customersResponse = await getTotalCustomers();
+        console.log('Customers API Response:', customersResponse);
+        if (!customersResponse.success) {
+          throw new Error(customersResponse.error || "Lỗi từ API khách hàng");
+        }
+        const totalCustomers = customersResponse.data.total || 0;
 
         // Fetch tổng sản phẩm
         const productsResponse = await getTotalProducts();
         console.log('Products API Response:', productsResponse);
-
         if (!productsResponse.success) {
           throw new Error(productsResponse.error || "Lỗi từ API sản phẩm");
         }
         const totalProducts = productsResponse.pagination.total;
 
-        // Cập nhật state
         setOverviewData({
-          monthlyRevenue,
-          monthlyCustomers: uniqueCustomers,
+          yearlyRevenue,
+          totalCustomers,
           totalProducts,
           topProducts,
         });
@@ -187,20 +230,19 @@ const AdminOverview = () => {
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-6">Tổng quan</h2>
 
-      {/* Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <div className="bg-white p-6 rounded-lg shadow flex items-center">
           <DollarSign size={32} className="text-red-600 mr-4" />
           <div>
-            <h3 className="text-lg font-semibold text-gray-700">Doanh thu tháng</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(overviewData.monthlyRevenue)}</p>
+            <h3 className="text-lg font-semibold text-gray-700">Doanh thu năm</h3>
+            <p className="text-2xl font-bold text-gray-900">{formatCurrency(overviewData.yearlyRevenue)}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow flex items-center">
           <Users size={32} className="text-blue-600 mr-4" />
           <div>
-            <h3 className="text-lg font-semibold text-gray-700">Khách hàng trong tháng</h3>
-            <p className="text-2xl font-bold text-gray-900">{overviewData.monthlyCustomers}</p>
+            <h3 className="text-lg font-semibold text-gray-700">Tổng khách hàng</h3>
+            <p className="text-2xl font-bold text-gray-900">{overviewData.totalCustomers}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow flex items-center">
@@ -212,44 +254,42 @@ const AdminOverview = () => {
         </div>
       </div>
 
-      {/* Biểu đồ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <Line data={chartDataRevenue} options={chartOptions} />
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <Line data={chartDataCustomers} options={chartOptions} />
+          <ReactApexChart
+            options={chartOptions}
+            series={[{ name: "Doanh thu (VNĐ)", data: chartOptions.chart.type === 'line' ? [] : [] }]}
+            type="line"
+            height={350}
+            ref={chartRefRevenue}
+          />
         </div>
       </div>
 
-      {/* Sản phẩm bán chạy */}
       <div className="bg-white p-6 rounded-lg shadow">
         <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
           <TrendingUp size={24} className="text-purple-600 mr-2" />
           Sản phẩm bán chạy
         </h3>
-        {overviewData.topProducts.length === 0 ? (
-          <p className="text-gray-600">Không có dữ liệu sản phẩm bán chạy</p>
+        {overviewData.topProducts.length > 0 ? (
+          overviewData.topProducts.map((product, index) => (
+            <div key={index} className="mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-600">{product.name}</span>
+                <span className="text-sm font-bold">{product.quantitySold} lượt bán</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full ${index === 0 ? 'bg-blue-600' : index === 1 ? 'bg-green-500' : 'bg-purple-500'}`}
+                  style={{ width: `${(product.quantitySold / (overviewData.topProducts[0].quantitySold || 1)) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          ))
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b">
-                  <th className="py-2 px-4 text-gray-600">Sản phẩm</th>
-                  <th className="py-2 px-4 text-gray-600">Số lượng bán</th>
-                  <th className="py-2 px-4 text-gray-600">Doanh thu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {overviewData.topProducts.map((product) => (
-                  <tr key={product.id} className="border-b hover:bg-gray-50">
-                    <td className="py-2 px-4">{product.name}</td>
-                    <td className="py-2 px-4">{product.quantitySold}</td>
-                    <td className="py-2 px-4">{formatCurrency(product.revenue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex flex-col justify-center items-center h-32 text-gray-500">
+            <Package className="w-12 h-12 text-gray-300 mb-2" />
+            <p className="text-sm text-gray-400">Không có dữ liệu sản phẩm bán chạy</p>
           </div>
         )}
       </div>
