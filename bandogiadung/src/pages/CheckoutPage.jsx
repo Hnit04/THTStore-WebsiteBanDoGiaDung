@@ -92,8 +92,9 @@ function CheckoutPage() {
         customerEmail: user?.email || "default@example.com",
       };
 
+      console.log("Payload gửi đến SEPay:", JSON.stringify(payload, null, 2));
       const response = await createSepayTransaction(payload);
-      console.log("==== RAW response from createSepayTransaction ====");
+      console.log("==== Phản hồi từ createSepayTransaction ====");
       console.log(JSON.stringify(response, null, 2));
       console.log("Type:", typeof response);
 
@@ -117,7 +118,14 @@ function CheckoutPage() {
       toast.success("Đã tạo giao dịch. Vui lòng quét mã QR để thanh toán.");
     } catch (error) {
       console.error("Payment error:", error);
-      const errorMessage = error.message || "Không thể tạo giao dịch. Vui lòng thử lại.";
+      let errorMessage = "Không thể tạo giao dịch. Vui lòng thử lại.";
+      if (error.message.includes("Thiếu SEPay API Key")) {
+        errorMessage = "Lỗi hệ thống: Thiếu API Key SEPay. Vui lòng liên hệ hỗ trợ.";
+      } else if (error.message.includes("ENOTFOUND")) {
+        errorMessage = "Không thể kết nối đến SEPay. Vui lòng kiểm tra kết nối mạng.";
+      } else if (error.message.includes("Lỗi xác thực")) {
+        errorMessage = "Lỗi xác thực với SEPay. Vui lòng liên hệ hỗ trợ.";
+      }
       toast.error(errorMessage);
     } finally {
       setLoading(false);
