@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { DollarSign, Users, Package, TrendingUp } from "lucide-react";
 import ReactApexChart from "react-apexcharts";
 import { formatCurrency, formatDate } from "../../lib/utils.js";
-import { getAdminOrders, getTotalProducts, getTotalCustomers } from "../../lib/api.js";
+import { getAllOrders, getTotalProducts, getTotalCustomers } from "../../lib/api.js";
 import toast from "react-hot-toast";
 
 const AdminOverview = () => {
@@ -12,8 +12,10 @@ const AdminOverview = () => {
     totalProducts: 0,
     topProducts: [],
   });
+  const [orders, setOrders] = useState([]);
   const chartRefRevenue = useRef(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const chartOptions = {
     chart: {
@@ -116,28 +118,30 @@ const AdminOverview = () => {
     const fetchOverviewData = async () => {
       try {
         setLoading(true);
+        setError(null);
   
         const now = new Date();
         const startOfYear = new Date(now.getFullYear(), 0, 1);
         const endOfYear = new Date(now.getFullYear(), 11, 31);
-        const startDate = startOfYear.toISOString().split("T")[0];
-        const endDate = endOfYear.toISOString().split("T")[0];
-  
-        const token = localStorage.getItem("token");
-        if (!token) {
-          throw new Error("Không tìm thấy token xác thực. Vui lòng đăng nhập lại.");
+        
+        // Fetch orders using the getAllOrders method like StatisticsPage does
+        const ordersResponse = await getAllOrders();
+        console.log('fetchOverviewData - Raw Response:', ordersResponse);
+
+        if (!ordersResponse || typeof ordersResponse !== 'object') {
+          throw new Error('Response API không hợp lệ');
         }
-        console.log('Token used for API calls:', token); // Log the token
-  
-        const ordersResponse = await getAdminOrders(startDate, endDate);
-        console.log('Phản hồi API Đơn Hàng:', ordersResponse);
-  
-        if (!ordersResponse.success) {
-          const errorMessage = ordersResponse.error || "Lỗi từ API đơn hàng (không có chi tiết lỗi từ server)";
-          throw new Error(errorMessage);
+
+        const orders = Array.isArray(ordersResponse) ? ordersResponse : (ordersResponse.data || []);
+        console.log('fetchOverviewData - Extracted orders:', orders);
+
+        if (!Array.isArray(orders) || orders.length === 0) {
+          throw new Error('Không có dữ liệu đơn hàng từ API');
         }
-        const orders = ordersResponse.data;
-  
+        
+        setOrders(orders);
+        
+        // Process orders for revenue data
         const revenueByMonth = {};
         orders.forEach((order) => {
           const createdAt = new Date(order.created_at);
@@ -159,29 +163,34 @@ const AdminOverview = () => {
           chartRefRevenue.current.updateOptions({ xaxis: { categories: months } });
         }
   
+        // Get top products
         const productSales = {};
         orders.forEach((order) => {
-          order.items.forEach((item) => {
-            const key = item.product_id;
-            if (key) {
-              if (!productSales[key]) {
-                productSales[key] = {
-                  id: key,
-                  name: item.product_name || 'Sản phẩm không xác định',
-                  quantitySold: 0,
-                  revenue: 0,
-                };
+          if (order.items && Array.isArray(order.items)) {
+            order.items.forEach((item) => {
+              const key = item.product_id;
+              if (key) {
+                if (!productSales[key]) {
+                  productSales[key] = {
+                    id: key,
+                    name: item.product_name || 'Sản phẩm không xác định',
+                    quantitySold: 0,
+                    revenue: 0,
+                  };
+                }
+                productSales[key].quantitySold += item.quantity || 0;
+                productSales[key].revenue += (item.quantity || 0) * (item.product_price || 0);
               }
-              productSales[key].quantitySold += item.quantity || 0;
-              productSales[key].revenue += (item.quantity || 0) * (item.product_price || 0);
-            }
-          });
+            });
+          }
         });
+        
         const topProducts = Object.entries(productSales)
           .map(([key, value]) => value)
           .sort((a, b) => b.quantitySold - a.quantitySold)
           .slice(0, 3);
   
+        // Fetch additional data
         const customersResponse = await getTotalCustomers();
         console.log('Phản hồi API Khách Hàng:', customersResponse);
         if (!customersResponse.success) {
@@ -207,6 +216,7 @@ const AdminOverview = () => {
           message: error.message,
           stack: error.stack,
         });
+        setError(error.message || "Không thể tải dữ liệu tổng quan");
         toast.error(error.message || "Không thể tải dữ liệu tổng quan");
         if (error.message.includes('chuyển hướng') || error.message.includes('đăng nhập')) {
           window.location.href = '/login';
@@ -223,6 +233,24 @@ const AdminOverview = () => {
     return (
       <div className="p-6 flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+          {error.includes('đăng nhập') && (
+            <button
+              onClick={() => window.location.href = '/login'}
+              className="ml-2 bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700"
+            >
+              Đăng nhập lại
+            </button>
+          )}
+        </div>
       </div>
     );
   }
