@@ -10,8 +10,7 @@ import { io } from "socket.io-client";
 import { createSepayTransaction } from "../lib/api.js";
 import SepayQRCode from "../components/payment/SepayQRCode.jsx";
 
-// Sửa URL Socket.IO để loại bỏ "/" ở cuối
-const SOCKET_URL = import.meta.env.VITE_API_URL || "https://thtstore-websitebandogiadung-backend.onrender.com";
+const SOCKET_URL = import.meta.env.VITE_API_URL || "https://thtstore-websitebandogiadung-backend.onrender.com/";
 const socket = io(SOCKET_URL, { autoConnect: true });
 
 function CheckoutPage() {
@@ -47,15 +46,14 @@ function CheckoutPage() {
 
     if (transaction) {
       const handleTransactionUpdate = (data) => {
-        console.log("Received transactionUpdate:", data);
-        if (data.transactionId === transaction.transactionId) {
-          setTransactionStatus(data.status);
-          if (data.status === "SUCCESS") {
-            handlePaymentSuccess(data.transactionId);
-          } else if (data.status === "FAILED") {
-            toast.error("Thanh toán thất bại. Vui lòng thử lại.");
-            setTransaction(null);
-          }
+        console.log("Received transactionUpdate:", JSON.stringify(data, null, 2)); // Log chi tiết data
+        // Tạm thời bỏ điều kiện để debug
+        setTransactionStatus(data.status);
+        if (data.status === "SUCCESS") {
+          handlePaymentSuccess(transaction.transactionId);
+        } else if (data.status === "FAILED") {
+          toast.error("Thanh toán thất bại. Vui lòng thử lại.");
+          setTransaction(null);
         }
       };
       socket.on("transactionUpdate", handleTransactionUpdate);
