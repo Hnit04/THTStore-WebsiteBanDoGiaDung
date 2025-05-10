@@ -1,259 +1,442 @@
-"use client";
+import axios from "axios";
 
-import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useCart } from "../contexts/CartContext.jsx";
-import { useAuth } from "../contexts/AuthContext.jsx";
-import { formatCurrency } from "../lib/utils.js";
-import toast from "react-hot-toast";
-import { io } from "socket.io-client";
-import { createSepayTransaction } from "../lib/api.js";
-import SepayQRCode from "../components/payment/SepayQRCode.jsx";
+const API_URL = "https://thtstore-websitebandogiadung-backend.onrender.com/api";
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || "https://thtstore-websitebandogiadung-backend.onrender.com/";
-const socket = io(SOCKET_URL);
-
-function CheckoutPage() {
-  const { cart, getCartTotal, removeFromCart } = useCart();
-  const { isAuthenticated, user } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [paymentMethod, setPaymentMethod] = useState("sepay-qr");
-  const [transaction, setTransaction] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [transactionStatus, setTransactionStatus] = useState(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const itemIds = params.getAll("items");
-    const selected = cart.filter((item) => itemIds.includes(item._id));
-    setSelectedItems(selected);
-  }, [cart, location.search]);
-
-  const subtotal = selectedItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const shipping = subtotal > 500000 ? 0 : 30000;
-  const total = subtotal + shipping;
-
-  useEffect(() => {
-    if (transaction) {
-      const handleTransactionUpdate = (data) => {
-        if (data.transactionId === transaction.transactionId) {
-          setTransactionStatus(data.status);
-          if (data.status === "SUCCESS") {
-            handlePaymentSuccess(data.transactionId);
-          } else if (data.status === "FAILED") {
-            toast.error("Thanh toán thất bại. Vui lòng thử lại.");
-            setTransaction(null);
-          }
-        }
-      };
-      socket.on("transactionUpdate", handleTransactionUpdate);
-      return () => socket.off("transactionUpdate", handleTransactionUpdate);
-    }
-  }, [transaction]);
-
-  const handlePaymentSuccess = async (transactionId) => {
-    toast.success("Thanh toán thành công!");
-    try {
-      await Promise.all(selectedItems.map((item) => removeFromCart(item._id)));
-      navigate("/order-confirmation", {
-        state: { transactionId, items: selectedItems, total },
-      });
-    } catch (error) {
-      console.error("Lỗi xử lý sau thanh toán:", error);
-      toast.error("Đã xảy ra lỗi sau khi thanh toán. Vui lòng kiểm tra đơn hàng.");
-    }
-  };
-
-  const handlePayment = async () => {
-    if (!selectedItems.length) {
-      toast.error("Vui lòng chọn ít nhất một sản phẩm");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const orderId = `THT${Date.now()}`;
-      const payload = {
-        transaction_id: orderId,
-        amount: total,
-        description: `Thanh toán đơn hàng #${orderId}`,
-        items: selectedItems.map((item) => ({
-          name: item.product.name,
-          quantity: item.quantity,
-          price: item.product.price,
-        })),
-        bank_account: {
-          bank_code: "MB",
-          account_number: "0326829327",
-          account_name: "TRAN CONG TINH",
-        },
-        customerEmail: user?.email || "default@example.com",
-      };
-
-      const response = await createSepayTransaction(payload);
-      console.log("==== RAW response from createSepayTransaction ====");
-      console.log(JSON.stringify(response, null, 2));
-      console.log("Type:", typeof response);
-
-      if (!response.success) {
-        throw new Error(response.error || "Không thể tạo giao dịch");
-      }
-
-      const qrUrl = response.qrCodeUrl || response.qr_code_url;
-      if (!qrUrl) {
-        throw new Error("Không nhận được mã QR từ SEPay");
-      }
-
-      setTransaction({
-        transactionId: orderId,
-        qrCodeUrl: qrUrl,
-        status: "PENDING",
-      });
-
-      setTransactionStatus("PENDING");
-
-      toast.success("Đã tạo giao dịch. Vui lòng quét mã QR để thanh toán.");
-    } catch (error) {
-      console.error("Payment error:", error);
-      const errorMessage = error.message || "Không thể tạo giao dịch. Vui lòng thử lại.";
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cancelTransaction = () => {
-    setTransaction(null);
-    setTransactionStatus(null);
-    toast.success("Đã hủy giao dịch.");
-  };
-
-  if (!isAuthenticated) {
-    return (
-        <div className="container mx-auto px-4 py-16 text-center">
-          <h1 className="text-3xl font-bold mb-6">Thanh Toán</h1>
-          <p className="text-gray-600 mb-8">Vui lòng đăng nhập để tiếp tục thanh toán.</p>
-          <Link to="/login?redirect=checkout" className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md font-medium">
-            Đăng nhập ngay
-          </Link>
-        </div>
-    );
+async function fetchAPI(endpoint, options = {}) {
+  const url = `${API_URL}${endpoint}`;
+  const token = localStorage.getItem("token");
+  if (token) {
+    options.headers = {
+      ...options.headers,
+      Authorization: `Bearer ${token}`,
+    };
   }
 
-  if (!selectedItems.length) {
-    return (
-        <div className="container mx-auto px-4 py-16 text-center">
-          <h1 className="text-3xl font-bold mb-6">Thanh Toán</h1>
-          <p className="text-gray-600 mb-8">Không có sản phẩm nào để thanh toán.</p>
-          <Link to="/cart" className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md font-medium">
-            Quay lại giỏ hàng
-          </Link>
-        </div>
-    );
+  options.headers = {
+    "Content-Type": "application/json",
+    ...options.headers,
+  };
+
+  try {
+    console.log(`Calling API: ${url}`, options);
+    const response = await fetch(url, options);
+    console.log(`API Response status: ${response.status}`);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`API Error Response:`, errorData);
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`API Response data:`, data);
+    return data.data || data;
+  } catch (error) {
+    console.error(`API Error at ${url}:`, error.message);
+    throw new Error(`Failed to fetch API at ${url}: ${error.message}`);
   }
-
-  return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Thanh Toán</h1>
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="w-full lg:w-2/3">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-bold mb-4">Chi tiết đơn hàng</h2>
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                <tr>
-                  <th className="py-4 px-6 text-left">Sản phẩm</th>
-                  <th className="py-4 px-6 text-right">Số lượng</th>
-                  <th className="py-4 px-6 text-right">Giá</th>
-                  <th className="py-4 px-6 text-right">Tổng</th>
-                </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                {selectedItems.map((item) => (
-                    <tr key={item._id}>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center">
-                          <img
-                              src={item.product.image_url || "/placeholder.svg?height=80&width=80"}
-                              alt={item.product.name}
-                              className="w-20 h-20 object-cover rounded"
-                          />
-                          <div className="ml-4">
-                            <p className="font-medium">{item.product.name}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6 text-right">{item.quantity}</td>
-                      <td className="py-4 px-6 text-right">{formatCurrency(item.product.price)}</td>
-                      <td className="py-4 px-6 text-right">{formatCurrency(item.product.price * item.quantity)}</td>
-                    </tr>
-                ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div className="w-full lg:w-1/3">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-bold mb-4">Tóm tắt thanh toán</h2>
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span>Tạm tính</span>
-                  <span>{formatCurrency(subtotal)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Phí vận chuyển</span>
-                  <span>{shipping === 0 ? "Miễn phí" : formatCurrency(shipping)}</span>
-                </div>
-                <div className="border-t pt-4 mt-4">
-                  <div className="flex justify-between font-bold">
-                    <span>Tổng cộng</span>
-                    <span className="text-red-600">{formatCurrency(total)}</span>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <label className="block text-sm font-medium mb-2">Phương thức thanh toán</label>
-                  <select
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
-                      disabled={!!transaction}
-                  >
-                    <option value="sepay-qr">SEPay - QR Code (MB Bank)</option>
-                  </select>
-                </div>
-
-                {transaction ? (
-                    <SepayQRCode
-                        transactionId={transaction.transactionId}
-                        qrCodeUrl={transaction.qrCodeUrl}
-                        amount={total}
-                        onSuccess={handlePaymentSuccess}
-                        onError={cancelTransaction}
-                    />
-                ) : (
-                    <button
-                        onClick={handlePayment}
-                        disabled={loading}
-                        className={`block w-full text-center py-3 rounded-md font-medium ${
-                            loading ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-red-600 hover:bg-red-700 text-white"
-                        }`}
-                    >
-                      {loading ? "Đang xử lý..." : "Thanh toán"}
-                    </button>
-                )}
-              </div>
-              <div className="mt-6 text-center">
-                <Link to="/cart" className="text-red-600 hover:text-red-800">
-                  Quay lại giỏ hàng
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-  );
 }
 
-export default CheckoutPage;
+// Đơn hàng
+export async function getOrders({ startDate, endDate }) {
+  const token = localStorage.getItem("token");
+  console.log("api.js - Token:", token);
+  console.log("api.js - API Request:", `${API_URL}/orders/admin?startDate=${startDate}&endDate=${endDate}`);
+
+  try {
+    const response = await axios.get(`${API_URL}/orders/admin`, {
+      params: { startDate, endDate },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log("api.js - API Response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("api.js - API Error:", error.response?.data || error.message);
+    throw error.response?.data || error;
+  }
+}
+
+export const getAdminOrders = async (startDate, endDate) => {
+  const response = await fetch(`/api/orders/orderCustomer?startDate=${startDate}&endDate=${endDate}`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch orders");
+  }
+  return response.json();
+};
+
+export const getTotalProducts = async () => {
+  const response = await fetch("/api/products?limit=1", {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch products");
+  }
+  return response.json();
+};
+
+// Sản phẩm
+export async function getProducts(options = {}) {
+  const queryParams = new URLSearchParams();
+
+  if (options.category) queryParams.append("category", options.category);
+  if (options.minPrice) queryParams.append("price[gte]", options.minPrice);
+  if (options.maxPrice) queryParams.append("price[lte]", options.maxPrice);
+  if (options.search) queryParams.append("name", options.search);
+  if (options.limit) queryParams.append("limit", options.limit);
+  if (options.page) queryParams.append("page", options.page);
+
+  const queryString = queryParams.toString();
+  const endpoint = `/products${queryString ? `?${queryString}` : ""}`;
+
+  const response = await fetchAPI(endpoint);
+  return response;
+}
+
+export async function getProductById(id) {
+  if (!id || typeof id !== "string") {
+    console.error("getProductById called with invalid id:", id);
+    throw new Error("ID sản phẩm không hợp lệ");
+  }
+
+  console.log("Fetching product with ID:", id);
+  try {
+    const response = await fetchAPI(`/products/${id}`);
+    console.log("Product detail response:", response);
+    return response;
+  } catch (error) {
+    console.error("Error fetching product details:", error);
+    throw error;
+  }
+}
+
+// Danh mục
+export async function getCategories() {
+  const response = await fetchAPI("/categories");
+  return response;
+}
+
+// Đơn hàng
+export async function createOrder(orderData) {
+  const response = await fetchAPI("/orders", {
+    method: "POST",
+    body: JSON.stringify(orderData),
+  });
+  return response;
+}
+
+export async function getAllUsers() {
+  const response = await fetchAPI("/users/customer");
+  return response;
+}
+
+export async function getAllOrders() {
+  const response = await fetchAPI("/users/orders");
+  return response;
+}
+
+export async function getAllOrdersById(user) {
+  console.log("user2", user);
+  const response = await fetchAPI(`/users/myorders/${user.email}`);
+  return response;
+}
+
+export async function getUserOrders() {
+  const response = await fetchAPI("/orders");
+  return response;
+}
+
+export async function cancelOrder(orderId) {
+  const response = await fetchAPI(`/orders/${orderId}/cancel`, {
+    method: "PUT",
+  });
+  return response;
+}
+
+// Thanh toán SEPay - Phiên bản cải tiến
+export async function createSepayTransaction(transactionData) {
+  try {
+    console.log("Tạo giao dịch SEPay:", transactionData);
+    const response = await fetchAPI("/sepay/transactions", {
+      method: "POST",
+      body: JSON.stringify(transactionData),
+    });
+    console.log("Kết quả tạo giao dịch SEPay:", JSON.stringify(response, null, 2));
+
+    if (!response.success) {
+      throw new Error(response.error || "Không thể tạo giao dịch SEPay");
+    }
+
+    if (!response.qrCodeUrl && !response.qr_code_url) {
+      throw new Error("Không nhận được qrCodeUrl từ SEPay");
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Lỗi tạo giao dịch SEPay:", error);
+    throw error;
+  }
+}
+
+export async function checkTransactionStatus(transactionId) {
+  try {
+    if (!transactionId) {
+      console.error("checkTransactionStatus: transactionId không được cung cấp");
+      throw new Error("Mã giao dịch không hợp lệ");
+    }
+
+    console.log("Kiểm tra trạng thái giao dịch:", transactionId);
+    const response = await fetchAPI(`/sepay/transactions/${transactionId}`);
+    console.log("Kết quả kiểm tra trạng thái:", response);
+    return response;
+  } catch (error) {
+    console.error("Lỗi kiểm tra trạng thái giao dịch:", error);
+    throw error;
+  }
+}
+
+export async function checkSepayConnection() {
+  try {
+    const response = await fetchAPI("/sepay/check-connection");
+    return response;
+  } catch (error) {
+    console.error("Lỗi kiểm tra kết nối SEPay:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+// Xác thực
+export async function login(email, password) {
+  try {
+    console.log("login - Attempting with email:", email);
+    const response = await fetchAPI("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.token) {
+      console.error("login - No token received");
+      throw new Error("No token received from server");
+    }
+
+    localStorage.setItem("token", response.token);
+    console.log("login - Token saved to localStorage");
+
+    return response;
+  } catch (error) {
+    console.error("login - Failed:", error.message);
+    throw error;
+  }
+}
+
+export async function register(userData) {
+  const response = await fetchAPI("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(userData),
+  });
+  return response;
+}
+
+export async function verifyEmail(email, verificationCode) {
+  const response = await fetchAPI("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ email, verificationCode }),
+  });
+  return response;
+}
+
+export async function forgotPassword(email) {
+  const response = await fetchAPI("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  return response;
+}
+
+export async function verifyResetCode(email, resetCode) {
+  const response = await fetchAPI("/auth/verify-reset-code", {
+    method: "POST",
+    body: JSON.stringify({ email, resetCode }),
+  });
+  return response;
+}
+
+export async function resetPassword(email, resetCode, newPassword) {
+  const response = await fetchAPI("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ email, resetCode, newPassword }),
+  });
+  return response;
+}
+
+export async function createProduct(productData) {
+  const response = await fetchAPI("/users/product", {
+    method: "POST",
+    body: JSON.stringify(productData),
+  });
+  return response;
+}
+
+export async function updateProduct(productData) {
+  const response = await fetchAPI(`/users/updateProduct/${productData.id}`, {
+    method: "PUT",
+    body: JSON.stringify(productData),
+  });
+  return response;
+}
+
+export async function logout() {
+  await fetchAPI("/auth/logout", {
+    method: "POST",
+  });
+  localStorage.removeItem("token");
+}
+
+export async function getCurrentUser() {
+  console.log("🔍 getCurrentUser - Starting user verification");
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    console.warn("getCurrentUser - No token in localStorage");
+    throw new Error("No authentication token found");
+  }
+
+  try {
+    console.log("getCurrentUser - Fetching user data with token");
+    const response = await fetchAPI("/auth/me");
+
+    if (!response) {
+      console.error("getCurrentUser - Empty response");
+      throw new Error("Empty response from server");
+    }
+
+    if (!response.email) {
+      console.error("getCurrentUser - Missing email in response:", response);
+      throw new Error("Missing email in user data");
+    }
+
+    if (!response.role) {
+      console.error("getCurrentUser - Missing role in response:", response);
+      throw new Error("Missing role in user data");
+    }
+
+    console.log("getCurrentUser - Successfully verified user:", response.email, "Role:", response.role);
+    return response;
+  } catch (error) {
+    console.error("getCurrentUser - Failed:", error.message);
+    throw error;
+  }
+}
+
+// Người dùng
+export async function updateUserProfile(userData) {
+  const response = await fetchAPI("/users/profile", {
+    method: "PUT",
+    body: JSON.stringify(userData),
+  });
+  return response;
+}
+
+export async function changePassword(passwordData) {
+  const response = await fetchAPI("/users/change-password", {
+    method: "PUT",
+    body: JSON.stringify(passwordData),
+  });
+  return response;
+}
+
+// Giỏ hàng
+export async function getCart() {
+  try {
+    console.log("Fetching cart data");
+    const response = await fetchAPI("/cart");
+    console.log("Cart data received:", response);
+    return response;
+  } catch (error) {
+    console.error("Error fetching cart:", error);
+    return [];
+  }
+}
+
+export async function addToCart(productId, quantity) {
+  if (!productId || typeof productId !== "string") {
+    console.error("addToCart called with invalid productId:", productId);
+    throw new Error("ID sản phẩm không hợp lệ");
+  }
+
+  console.log(`Adding to cart: productId=${productId}, quantity=${quantity}`);
+  try {
+    const response = await fetchAPI("/cart", {
+      method: "POST",
+      body: JSON.stringify({ productId, quantity }),
+    });
+    console.log("Add to cart response:", response);
+    return response;
+  } catch (error) {
+    console.error("Error adding to cart:", error);
+    throw error;
+  }
+}
+
+export async function updateCartItem(itemId, quantity) {
+  if (!itemId || typeof itemId !== "string") {
+    console.error("updateCartItem called with invalid itemId:", itemId);
+    throw new Error("ID item giỏ hàng không hợp lệ");
+  }
+
+  console.log(`Updating cart item: itemId=${itemId}, quantity=${quantity}`);
+  try {
+    const response = await fetchAPI(`/cart/${itemId}`, {
+      method: "PUT",
+      body: JSON.stringify({ quantity }),
+    });
+    console.log("Update cart item response:", response);
+    return response;
+  } catch (error) {
+    console.error("Error updating cart item:", error);
+    throw error;
+  }
+}
+
+export async function removeFromCart(itemId) {
+  if (!itemId || typeof itemId !== "string") {
+    console.error("removeFromCart called with invalid itemId:", itemId);
+    throw new Error("ID item giỏ hàng không hợp lệ");
+  }
+
+  console.log(`Removing from cart: itemId=${itemId}`);
+  try {
+    const response = await fetchAPI(`/cart/${itemId}`, {
+      method: "DELETE",
+    });
+    console.log("Remove from cart response:", response);
+    return response;
+  } catch (error) {
+    console.error("Error removing from cart:", error);
+    throw error;
+  }
+}
+
+export async function clearCart() {
+  try {
+    console.log("Clearing cart");
+    const response = await fetchAPI("/cart/clear", {
+      method: "DELETE",
+    });
+    console.log("Clear cart response:", response);
+    return response;
+  } catch (error) {
+    console.error("Error clearing cart:", error);
+    throw error;
+  }
+}
