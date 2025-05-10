@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Sửa API_URL để loại bỏ "/api", vì endpoint sẽ bao gồm "/api"
-const API_URL = "https://thtstore-websitebandogiadung-backend.onrender.com";
+const API_URL = "https://thtstore-websitebandogiadung-backend.onrender.com/api";
 
 async function fetchAPI(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
