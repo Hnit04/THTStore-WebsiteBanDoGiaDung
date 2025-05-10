@@ -78,7 +78,7 @@ function App() {
                 </AdminProtectedRoute>
               }
           >
-            
+            <Route index element={<AdminOverview />} />
             <Route path="products" element={<ProductAdminPage />} />
             <Route path="customers" element={<CustomerPage />} />
             <Route path="orders" element={<OrderPage />} />
