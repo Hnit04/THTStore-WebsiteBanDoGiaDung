@@ -71,7 +71,7 @@ function App() {
           </Route>
           {/* Admin routes với AdminDashboard, không có Header/Footer */}
           <Route
-              path="/admin"
+              path="/"
               element={
                 <AdminProtectedRoute>
                   <AdminDashboard />
