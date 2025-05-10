@@ -3,8 +3,6 @@ import { BarChart, LineChart, PieChart, ArrowUpRight, Package, DollarSign, Calen
 import { getAllOrders } from '../lib/api.js';
 import ApexCharts from 'apexcharts';
 import * as XLSX from 'xlsx';
-import html2canvas from 'html2canvas'; // Import html2canvas
-import jsPDF from 'jspdf';
 
 const StatisticsPage = () => {
   const [orders, setOrders] = useState([]);
@@ -25,9 +23,8 @@ const StatisticsPage = () => {
     averageOrder: 0,
     topProduct: ''
   });
-  const [categoryStats, setCategoryStats] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
 
-  // Fetch employee name from database
   useEffect(() => {
     const fetchEmployeeData = async () => {
       try {
@@ -35,7 +32,7 @@ const StatisticsPage = () => {
         if (!token) {
           throw new Error('No token found, please log in.');
         }
-        console.log('Token used:', token); // Log token để kiểm tra
+        console.log('Token used:', token);
         const response = await fetch('/api/users/profile', {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -47,11 +44,11 @@ const StatisticsPage = () => {
           throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
         const data = await response.json();
-        console.log('API response from /api/users/profile:', data); // Log phản hồi từ API
+        console.log('API response from /api/users/profile:', data);
         if (!data.success) {
           throw new Error(data.error || 'Failed to fetch user data');
         }
-        setEmployeeName(data.data.fullName || 'Unknown User'); 
+        setEmployeeName(data.data.fullName || 'Unknown User');
       } catch (error) {
         console.error('Error fetching employee data:', error.message);
         setEmployeeName('Unknown User');
@@ -87,7 +84,7 @@ const StatisticsPage = () => {
           stack: error.stack,
           response: error.responseText ? error.responseText.slice(0, 100) : null
         });
-        setError(error.message === 'Failed to fetch orders: 401 Unauthorized' 
+        setError(error.message === 'Failed to fetch orders: 401 Unauthorized'
           ? 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'
           : 'Không thể tải dữ liệu đơn hàng. Vui lòng kiểm tra kết nối hoặc thử lại sau.');
         setOrders([]);
@@ -100,7 +97,7 @@ const StatisticsPage = () => {
           averageOrder: 0,
           topProduct: ''
         });
-        setCategoryStats([]);
+        setTopProducts([]);
         setShowChart(false);
       } finally {
         setLoading(false);
@@ -134,7 +131,7 @@ const StatisticsPage = () => {
         averageOrder: 0,
         topProduct: ''
       });
-      setCategoryStats([]);
+      setTopProducts([]);
       setShowChart(false);
       return;
     }
@@ -147,7 +144,6 @@ const StatisticsPage = () => {
     let total = 0;
     const productCounts = {};
     const customerEmails = new Set();
-    const categoryRevenue = {};
 
     for (const order of filteredOrders) {
       const createdAt = new Date(order.created_at);
@@ -172,72 +168,6 @@ const StatisticsPage = () => {
         for (const item of order.items) {
           const productName = item.product_name || 'Sản phẩm không xác định';
           productCounts[productName] = (productCounts[productName] || 0) + (item.quantity || 1);
-
-          let categoryName = 'Không xác định';
-          const productId = item.product_id;
-          if (productId) {
-            try {
-              const token = localStorage.getItem('token');
-              if (!token) {
-                console.warn('No token found in localStorage');
-                throw new Error('Token không tồn tại, cần đăng nhập lại');
-              }
-              console.log('Token used for API calls:', token);
-
-              console.log(`Fetching product with ID: ${productId}`);
-              const productResponse = await fetch(`/api/products/${productId}`, {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              });
-              if (!productResponse.ok) {
-                const errorText = await productResponse.text();
-                console.error(`Failed to fetch product ${productId}: ${productResponse.status} - ${errorText}`);
-                throw new Error(`Không thể lấy thông tin sản phẩm: ${productResponse.statusText}`);
-              }
-              const productText = await productResponse.text();
-              console.log(`Raw product response for ID ${productId}:`, productText);
-              const product = JSON.parse(productText);
-              console.log(`Product data for ID ${productId}:`, product);
-              const categoryId = product.category_id;
-
-              if (categoryId) {
-                console.log(`Fetching category with ID: ${categoryId}`);
-                const categoryResponse = await fetch(`/api/categories/${categoryId}`, {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                  },
-                });
-                if (!categoryResponse.ok) {
-                  const errorText = await categoryResponse.text();
-                  console.error(`Failed to fetch category ${categoryId}: ${categoryResponse.status} - ${errorText}`);
-                  throw new Error(`Không thể lấy thông tin danh mục: ${categoryResponse.statusText}`);
-                }
-                const categoryText = await categoryResponse.text();
-                console.log(`Raw category response for ID ${categoryId}:`, categoryText);
-                let category;
-                try {
-                  category = JSON.parse(categoryText);
-                } catch (parseError) {
-                  console.error(`Failed to parse category response as JSON:`, parseError, categoryText);
-                  throw new Error('Phản hồi từ server không phải JSON hợp lệ');
-                }
-                console.log(`Category data for ID ${categoryId}:`, category);
-                categoryName = category.data?.name || category.name || 'Không xác định';
-              }
-
-              const itemRevenue = (item.price || 0) * (item.quantity || 1);
-              categoryRevenue[categoryName] = (categoryRevenue[categoryName] || 0) + itemRevenue;
-            } catch (error) {
-              console.error('Error fetching category data:', error.message, error.stack);
-              const itemRevenue = (item.price || 0) * (item.quantity || 1);
-              categoryRevenue['Không xác định'] = (categoryRevenue['Không xác định'] || 0) + itemRevenue;
-            }
-          } else {
-            console.warn(`No product_id found for item:`, item);
-            const itemRevenue = (item.price || 0) * (item.quantity || 1);
-            categoryRevenue['Không xác định'] = (categoryRevenue['Không xác định'] || 0) + itemRevenue;
-          }
         }
       }
 
@@ -294,20 +224,16 @@ const StatisticsPage = () => {
       productCounts[a] > productCounts[b] ? a : b, ''
     ) || 'Không xác định';
 
+    const topProducts = Object.entries(productCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+
     const totalOrders = filteredOrders.length;
     const totalCustomers = customerEmails.size;
     const averageOrder = totalOrders > 0 ? total / totalOrders : 0;
 
-    const totalCategoryRevenue = Object.values(categoryRevenue).reduce((sum, rev) => sum + rev, 0);
-    const categoryStats = Object.keys(categoryRevenue)
-      .map(category => ({
-        name: category,
-        percentage: totalCategoryRevenue > 0 ? ((categoryRevenue[category] / totalCategoryRevenue) * 100).toFixed(1) : 0
-      }))
-      .sort((a, b) => b.percentage - a.percentage)
-      .slice(0, 3);
-
-    console.log('processOrders - Processed:', { chartData, total, totalOrders, totalCustomers, topProduct, categoryStats });
+    console.log('processOrders - Processed:', { chartData, total, totalOrders, totalCustomers, topProduct, topProducts });
     setChartData(chartData);
     setRecentTransactions(sortedTransactions);
     setTotalRevenue(total);
@@ -317,7 +243,7 @@ const StatisticsPage = () => {
       averageOrder,
       topProduct
     });
-    setCategoryStats(categoryStats);
+    setTopProducts(topProducts);
     setShowChart(chartData.length > 0);
   };
 
@@ -329,7 +255,7 @@ const StatisticsPage = () => {
     }));
   };
 
-  const formatCurrency = (amount) => 
+  const formatCurrency = (amount) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
   const percentChange = 12.4;
@@ -422,7 +348,6 @@ const StatisticsPage = () => {
       setError(`Không thể xuất báo cáo Excel: ${error.message}. Vui lòng thử lại.`);
     }
   };
-  
 
   useEffect(() => {
     if (orders.length > 0) {
@@ -604,7 +529,7 @@ const StatisticsPage = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Thống Kê Doanh Thu</h1>
         <div className="flex space-x-2 items-center">
-          <button 
+          <button
             onClick={exportToExcel}
             className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
           >
@@ -613,7 +538,6 @@ const StatisticsPage = () => {
               <span>Xuất báo cáo</span>
             </div>
           </button>
-          
         </div>
       </div>
 
@@ -756,20 +680,20 @@ const StatisticsPage = () => {
         <div className="lg:col-span-4">
           <div className="bg-white rounded-lg shadow h-full">
             <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold">Phân tích doanh thu</h2>
+              <h2 className="text-lg font-semibold">Sản phẩm bán chạy</h2>
             </div>
             <div className="p-4">
-              {categoryStats.length > 0 ? (
-                categoryStats.map((category, index) => (
+              {topProducts.length > 0 ? (
+                topProducts.map((product, index) => (
                   <div key={index} className="mb-6">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-gray-600">{category.name}</span>
-                      <span className="text-sm font-bold">{category.percentage}%</span>
+                      <span className="text-sm text-gray-600">{product.name}</span>
+                      <span className="text-sm font-bold">{product.count} lượt bán</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
                         className={`h-2 rounded-full ${index === 0 ? 'bg-blue-600' : index === 1 ? 'bg-green-500' : 'bg-purple-500'}`}
-                        style={{ width: `${category.percentage}%` }}
+                        style={{ width: `${(product.count / (topProducts[0].count || 1)) * 100}%` }}
                       ></div>
                     </div>
                   </div>
@@ -777,7 +701,7 @@ const StatisticsPage = () => {
               ) : (
                 <div className="flex flex-col justify-center items-center h-32 text-gray-500">
                   <Package className="w-12 h-12 text-gray-300 mb-2" />
-                  <p className="text-sm text-gray-400">Không có dữ liệu phân tích danh mục</p>
+                  <p className="text-sm text-gray-400">Không có dữ liệu sản phẩm bán chạy</p>
                 </div>
               )}
             </div>
