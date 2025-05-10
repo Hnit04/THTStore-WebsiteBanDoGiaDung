@@ -164,7 +164,7 @@ export async function cancelOrder(orderId) {
 export async function createSepayTransaction(transactionData) {
   try {
     console.log("Tạo giao dịch SEPay:", transactionData);
-    const response = await fetchAPI("/sepay/create-transaction", { // Sửa endpoint
+    const response = await fetchAPI("/sepay/create-transaction", {
       method: "POST",
       body: JSON.stringify(transactionData),
     });
@@ -199,19 +199,6 @@ export async function checkTransactionStatus(transactionId) {
   } catch (error) {
     console.error("Lỗi kiểm tra trạng thái giao dịch:", error);
     throw error;
-  }
-}
-
-export async function checkSepayConnection() {
-  try {
-    const response = await fetchAPI("/sepay/check-connection");
-    return response;
-  } catch (error) {
-    console.error("Lỗi kiểm tra kết nối SEPay:", error);
-    return {
-      success: false,
-      error: error.message,
-    };
   }
 }
 
