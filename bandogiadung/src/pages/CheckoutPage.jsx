@@ -46,7 +46,7 @@ function CheckoutPage() {
     setSelectedItems(selected);
   }, [cart, location.search]);
 
-  // Đồng bộ thông tin user khi component mount hoặc user thay đổi
+  // Đồng bộ thông tin user từ database khi component mount hoặc user thay đổi
   useEffect(() => {
     if (user) {
       setCustomerInfo({
@@ -168,7 +168,14 @@ function CheckoutPage() {
         throw new Error(orderData.message || "Không thể tạo đơn hàng");
       }
 
-      await Promise.all(selectedItems.map((item) => removeFromCart(item._id)));
+      // Xóa toàn bộ giỏ hàng
+      await fetch("https://thtstore-websitebandogiadung-backend.onrender.com/api/cart/clear", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
       navigate("/order-confirmation", {
         state: { transactionId, items: selectedItems, total, orderId: orderData.data.id },
@@ -176,6 +183,7 @@ function CheckoutPage() {
     } catch (error) {
       console.error("Lỗi xử lý sau thanh toán:", error);
       toast.error("Đã xảy ra lỗi sau khi thanh toán. Vui lòng kiểm tra đơn hàng.");
+      navigate("/order-confirmation", { state: { transactionId, error: true } });
     }
   };
 
