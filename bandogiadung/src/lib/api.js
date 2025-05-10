@@ -193,7 +193,7 @@ export async function checkTransactionStatus(transactionId) {
     }
 
     console.log("Kiểm tra trạng thái giao dịch:", transactionId);
-    const response = await fetchAPI(`/sepay/transactions/${transactionId}`);
+    const response = await fetchAPI(`/api/sepay/transaction/${transactionId}`); // Đã sửa
     console.log("Kết quả kiểm tra trạng thái:", response);
     return response;
   } catch (error) {
