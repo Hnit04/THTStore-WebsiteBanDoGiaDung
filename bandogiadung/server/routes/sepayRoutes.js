@@ -22,7 +22,7 @@ router.post("/create-transaction", async (req, res) => {
     await transaction.save();
 
     try {
-        let accountNumber = "0326829327"; // Số tài khoản của Trần Công Tình
+        let accountNumber = "0326829327"; // Số tài khoản của Trần Công Tính
         if (bank_account) {
             if (typeof bank_account === "object" && bank_account !== null) {
                 accountNumber = bank_account.account || bank_account.number || bank_account.id || bank_account.value || "0326829327";
